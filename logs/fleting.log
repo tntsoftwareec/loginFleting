@@ -118,3 +118,12 @@ AttributeError: module 'flet.controls.border' has no attribute 'all'
 2026-09-13 15:56:22,592 | INFO | Router | Navigating to: /
 2026-09-13 15:56:25,764 | INFO | Router | Navigating to: /settings
 2026-09-13 15:56:28,968 | INFO | flet | Session was garbage collected: Vc9bk6qKpIekJTxm
+2026-10-02 21:35:45,741 | INFO | EmailService | [SIMULACIÓN DE ENVÍO SMTP] Factura 001-001-000000001 enviada exitosamente a: juan.perez@example.com, recepcion.sri@sri.gob.ec
+2026-10-02 21:54:29,479 | INFO | Router | Navigating to: /
+2026-10-02 21:54:29,522 | INFO | Router | Navigating to: /company
+2026-10-02 21:54:29,659 | INFO | Router | Navigating to: /pos
+2026-10-02 21:54:29,759 | INFO | Router | Navigating to: /company
+2026-10-02 21:54:29,761 | INFO | Router | Navigating to: /invoices
+2026-10-02 21:54:29,773 | INFO | Router | Navigating to: /clients
+2026-10-02 21:54:29,776 | INFO | Router | Navigating to: /company
+2026-10-02 21:54:29,779 | INFO | Router | Navigating to: /

@@ -56,87 +56,26 @@ def _connect_mysql():
 def init_db(conn=None):
     if conn is None:
         conn = get_connection()
-    
-    cursor = conn.cursor()
 
-    # Table: roles
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS roles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        description TEXT,
-        can_read INTEGER DEFAULT 1,
-        can_write INTEGER DEFAULT 1,
-        can_update INTEGER DEFAULT 1,
-        can_delete INTEGER DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    import importlib
+    mig1 = importlib.import_module("migrations.001_initial")
+    mig2 = importlib.import_module("migrations.002_business_and_pos")
+    seed1 = importlib.import_module("seeds.001_roles_seed")
+    seed2 = importlib.import_module("seeds.002_users_seed")
+    seed3 = importlib.import_module("seeds.003_clients_seed")
+    seed4 = importlib.import_module("seeds.004_suppliers_seed")
+    seed5 = importlib.import_module("seeds.005_products_services_seed")
+    seed6 = importlib.import_module("seeds.006_company_seed")
 
-    # Table: users
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        role_id INTEGER NOT NULL,
-        status TEXT DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
-    );
-    """)
-    conn.commit()
+    mig1.up(conn)
+    mig2.up(conn)
 
-    # Auto-migration for existing databases missing permission columns
-    cursor.execute("PRAGMA table_info(roles)")
-    columns = [row[1] for row in cursor.fetchall()]
-    for col in ("can_read", "can_write", "can_update", "can_delete"):
-        if col not in columns:
-            cursor.execute(f"ALTER TABLE roles ADD COLUMN {col} INTEGER DEFAULT 1")
-    conn.commit()
+    seed1.run(conn)
+    seed2.run(conn)
+    seed3.run(conn)
+    seed4.run(conn)
+    seed5.run(conn)
+    seed6.run(conn)
 
-    # Update default role permission presets for pre-existing records
-    cursor.execute("UPDATE roles SET can_delete = 0 WHERE name = 'Cajero'")
-    cursor.execute("UPDATE roles SET can_write = 0, can_update = 0, can_delete = 0 WHERE name = 'Usuario'")
-    conn.commit()
-
-    # Seed default roles if table is empty
-    cursor.execute("SELECT COUNT(*) FROM roles")
-    if cursor.fetchone()[0] == 0:
-        default_roles = [
-            ("Admin", "Administrador con acceso total al sistema", 1, 1, 1, 1),
-            ("Cajero", "Operador de punto de venta (crea y edita)", 1, 1, 1, 0),
-            ("Usuario", "Usuario estándar (solo lectura)", 1, 0, 0, 0)
-        ]
-        cursor.executemany(
-            "INSERT INTO roles (name, description, can_read, can_write, can_update, can_delete) VALUES (?, ?, ?, ?, ?, ?)",
-            default_roles
-        )
-        conn.commit()
-
-    # Seed default users if table is empty
-    cursor.execute("SELECT COUNT(*) FROM users")
-    if cursor.fetchone()[0] == 0:
-        admin_pass = hashlib.sha256("admin123".encode("utf-8")).hexdigest()
-        cajero_pass = hashlib.sha256("cajero123".encode("utf-8")).hexdigest()
-
-        cursor.execute("SELECT id FROM roles WHERE name = 'Admin'")
-        admin_row = cursor.fetchone()
-        admin_role_id = admin_row[0] if admin_row else 1
-
-        cursor.execute("SELECT id FROM roles WHERE name = 'Cajero'")
-        cajero_row = cursor.fetchone()
-        cajero_role_id = cajero_row[0] if cajero_row else 2
-
-        default_users = [
-            ("Administrador", "admin@pos.com", admin_pass, admin_role_id, "active"),
-            ("Cajero Demo", "cajero@pos.com", cajero_pass, cajero_role_id, "active"),
-        ]
-        cursor.executemany(
-            "INSERT INTO users (name, email, password, role_id, status) VALUES (?, ?, ?, ?, ?)",
-            default_users
-        )
-        conn.commit()
 
 

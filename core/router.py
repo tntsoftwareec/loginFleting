@@ -23,6 +23,9 @@ class Router:
         logger.info(f"Navigating to: {route}")
         self.current_route = route
         self.page.controls.clear()
+        self.page.overlay.clear()
+        if hasattr(self.page, "dialog"):
+            self.page.dialog = None
 
         try:
             view = routes[route](self.page, self)
