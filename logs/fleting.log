@@ -1,0 +1,120 @@
+2026-09-13 15:28:53,153 | INFO | flet | Assets path configured: /home/richtnt/python-dev/fleting/loginFleting/loginFleting/assets
+2026-09-13 15:28:53,154 | INFO | flet | Starting up UDS server on /tmp/5SgkpRZsWN
+2026-09-13 15:28:53,154 | INFO | flet | Flet app has started...
+2026-09-13 15:28:53,205 | INFO | flet | App URL: /tmp/5SgkpRZsWN
+2026-09-13 15:28:53,205 | INFO | flet_desktop | Starting Flet View app...
+2026-09-13 15:28:53,209 | INFO | flet_desktop | Flet client found in cache: /home/richtnt/.flet/client/flet-desktop-light-0.86.5
+2026-09-13 15:28:53,581 | INFO | flet | App session started
+2026-09-13 15:28:53,581 | INFO | Router | Navigating to: /login
+2026-09-13 15:28:53,620 | ERROR | Router | Error rendering view
+Traceback (most recent call last):
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/core/router.py", line 28, in navigate
+    view = routes[route](self.page, self)
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/configs/routes.py", line 56, in <lambda>
+    return lambda page, router: load_view(path)(page, router).render()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/app/views/pages/login_view.py", line 91, in render
+    padding=ft.padding.symmetric(vertical=16),
+            ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'flet.controls.padding' has no attribute 'symmetric'
+2026-09-13 15:28:53,621 | INFO | App | Aplicação iniciada com sucesso
+2026-09-13 15:30:09,917 | INFO | flet | Assets path configured: /home/richtnt/python-dev/fleting/loginFleting/loginFleting/assets
+2026-09-13 15:30:09,918 | INFO | flet | Starting up UDS server on /tmp/xYjVqWXx7G
+2026-09-13 15:30:09,918 | INFO | flet | Flet app has started...
+2026-09-13 15:30:09,954 | INFO | flet | App URL: /tmp/xYjVqWXx7G
+2026-09-13 15:30:09,954 | INFO | flet_desktop | Starting Flet View app...
+2026-09-13 15:30:09,956 | INFO | flet_desktop | Flet client found in cache: /home/richtnt/.flet/client/flet-desktop-light-0.86.5
+2026-09-13 15:30:10,250 | INFO | flet | App session started
+2026-09-13 15:30:10,251 | INFO | Router | Navigating to: /login
+2026-09-13 15:30:10,283 | ERROR | Router | Error rendering view
+Traceback (most recent call last):
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/core/router.py", line 28, in navigate
+    view = routes[route](self.page, self)
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/configs/routes.py", line 56, in <lambda>
+    return lambda page, router: load_view(path)(page, router).render()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/app/views/pages/login_view.py", line 95, in render
+    begin=ft.alignment.center_left,
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'flet.controls.alignment' has no attribute 'center_left'
+2026-09-13 15:30:10,285 | INFO | App | Aplicação iniciada com sucesso
+2026-09-13 15:30:15,210 | INFO | flet | Session was garbage collected: s9TA4hvJaiFh1GUs
+2026-09-13 15:30:19,337 | INFO | flet | Session was garbage collected: 2cIJl6F6YowebPi4
+2026-09-13 15:31:20,316 | INFO | flet | Assets path configured: /home/richtnt/python-dev/fleting/loginFleting/loginFleting/assets
+2026-09-13 15:31:20,318 | INFO | flet | Starting up UDS server on /tmp/HfXNYFF1fb
+2026-09-13 15:31:20,318 | INFO | flet | Flet app has started...
+2026-09-13 15:31:20,366 | INFO | flet | App URL: /tmp/HfXNYFF1fb
+2026-09-13 15:31:20,366 | INFO | flet_desktop | Starting Flet View app...
+2026-09-13 15:31:20,368 | INFO | flet_desktop | Flet client found in cache: /home/richtnt/.flet/client/flet-desktop-light-0.86.5
+2026-09-13 15:31:20,746 | INFO | flet | App session started
+2026-09-13 15:31:20,748 | INFO | Router | Navigating to: /login
+2026-09-13 15:31:20,778 | ERROR | Router | Error rendering view
+Traceback (most recent call last):
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/core/router.py", line 28, in navigate
+    view = routes[route](self.page, self)
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/configs/routes.py", line 56, in <lambda>
+    return lambda page, router: load_view(path)(page, router).render()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/app/views/pages/login_view.py", line 141, in render
+    alignment=ft.alignment.center,
+              ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'flet.controls.alignment' has no attribute 'center'
+2026-09-13 15:31:20,780 | INFO | App | Aplicação iniciada com sucesso
+2026-09-13 15:31:28,001 | INFO | flet | Session was garbage collected: 8Qx58LHyKaDN8E7a
+2026-09-13 15:31:47,976 | INFO | flet | Assets path configured: /home/richtnt/python-dev/fleting/loginFleting/loginFleting/assets
+2026-09-13 15:31:47,978 | INFO | flet | Starting up UDS server on /tmp/LuqD1Qnssu
+2026-09-13 15:31:47,978 | INFO | flet | Flet app has started...
+2026-09-13 15:31:48,020 | INFO | flet | App URL: /tmp/LuqD1Qnssu
+2026-09-13 15:31:48,020 | INFO | flet_desktop | Starting Flet View app...
+2026-09-13 15:31:48,022 | INFO | flet_desktop | Flet client found in cache: /home/richtnt/.flet/client/flet-desktop-light-0.86.5
+2026-09-13 15:31:48,343 | INFO | flet | App session started
+2026-09-13 15:31:48,345 | INFO | Router | Navigating to: /login
+2026-09-13 15:31:48,381 | ERROR | Router | Error rendering view
+Traceback (most recent call last):
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/core/router.py", line 28, in navigate
+    view = routes[route](self.page, self)
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/configs/routes.py", line 56, in <lambda>
+    return lambda page, router: load_view(path)(page, router).render()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/richtnt/python-dev/fleting/loginFleting/loginFleting/app/views/pages/login_view.py", line 199, in render
+    border=ft.border.all(1, "#1e293b"),
+           ^^^^^^^^^^^^^
+AttributeError: module 'flet.controls.border' has no attribute 'all'
+2026-09-13 15:31:48,382 | INFO | App | Aplicação iniciada com sucesso
+2026-09-13 15:31:50,933 | INFO | flet | Session was garbage collected: eWhfzMIuEetuxXmo
+2026-09-13 15:33:08,310 | INFO | flet | Assets path configured: /home/richtnt/python-dev/fleting/loginFleting/loginFleting/assets
+2026-09-13 15:33:08,312 | INFO | flet | Starting up UDS server on /tmp/MHg93p3kMR
+2026-09-13 15:33:08,312 | INFO | flet | Flet app has started...
+2026-09-13 15:33:08,355 | INFO | flet | App URL: /tmp/MHg93p3kMR
+2026-09-13 15:33:08,356 | INFO | flet_desktop | Starting Flet View app...
+2026-09-13 15:33:08,357 | INFO | flet_desktop | Flet client found in cache: /home/richtnt/.flet/client/flet-desktop-light-0.86.5
+2026-09-13 15:33:08,705 | INFO | flet | App session started
+2026-09-13 15:33:08,706 | INFO | Router | Navigating to: /login
+2026-09-13 15:33:08,753 | INFO | App | Aplicação iniciada com sucesso
+2026-09-13 15:33:13,625 | INFO | flet | Session was garbage collected: Q0Ey0g12YKAUwHPi
+2026-09-13 15:35:38,676 | INFO | flet | Assets path configured: /home/richtnt/python-dev/fleting/loginFleting/loginFleting/assets
+2026-09-13 15:35:38,677 | INFO | flet | Starting up UDS server on /tmp/fQjgQM5YzE
+2026-09-13 15:35:38,677 | INFO | flet | Flet app has started...
+2026-09-13 15:35:38,724 | INFO | flet | App URL: /tmp/fQjgQM5YzE
+2026-09-13 15:35:38,724 | INFO | flet_desktop | Starting Flet View app...
+2026-09-13 15:35:38,726 | INFO | flet_desktop | Flet client found in cache: /home/richtnt/.flet/client/flet-desktop-light-0.86.5
+2026-09-13 15:35:39,041 | INFO | flet | App session started
+2026-09-13 15:35:39,042 | INFO | Router | Navigating to: /login
+2026-09-13 15:35:39,082 | INFO | App | Aplicação iniciada com sucesso
+2026-09-13 15:55:34,232 | INFO | flet | Assets path configured: /home/richtnt/python-dev/fleting/loginFleting/loginFleting/assets
+2026-09-13 15:55:34,232 | INFO | flet | Starting up UDS server on /tmp/Ic0KbrOl6E
+2026-09-13 15:55:34,233 | INFO | flet | Flet app has started...
+2026-09-13 15:55:34,264 | INFO | flet | App URL: /tmp/Ic0KbrOl6E
+2026-09-13 15:55:34,264 | INFO | flet_desktop | Starting Flet View app...
+2026-09-13 15:55:34,265 | INFO | flet_desktop | Flet client found in cache: /home/richtnt/.flet/client/flet-desktop-light-0.86.5
+2026-09-13 15:55:34,609 | INFO | flet | App session started
+2026-09-13 15:55:34,610 | INFO | Router | Navigating to: /login
+2026-09-13 15:55:34,653 | INFO | App | Aplicação iniciada com sucesso
+2026-09-13 15:56:09,140 | INFO | Router | Navigating to: /
+2026-09-13 15:56:14,615 | INFO | Router | Navigating to: /settings
+2026-09-13 15:56:18,032 | INFO | Router | Navigating to: /help
+2026-09-13 15:56:19,463 | INFO | Router | Navigating to: /
+2026-09-13 15:56:20,912 | INFO | Router | Navigating to: /help
+2026-09-13 15:56:22,592 | INFO | Router | Navigating to: /
+2026-09-13 15:56:25,764 | INFO | Router | Navigating to: /settings
+2026-09-13 15:56:28,968 | INFO | flet | Session was garbage collected: Vc9bk6qKpIekJTxm

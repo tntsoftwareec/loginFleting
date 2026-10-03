@@ -1,0 +1,19 @@
+{
+  "app": {
+    "name": "Loginfleting"
+  },
+  "menu": {
+    "home": "Home",
+    "users": "Users",
+    "roles": "Roles",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "home": {
+    "title": "Welcome to Loginfleting"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language"
+  }
+}
