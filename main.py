@@ -25,7 +25,7 @@ def main(page: ft.Page):
         router = Router(page)
         router.navigate("/login")
 
-        logger.info("Aplicação iniciada com sucesso")
+        logger.info("App iniciada con exito")
         
     except Exception as e:
         GlobalErrorHandler.handle(page, e)

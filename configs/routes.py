@@ -117,7 +117,7 @@ def load_view(view_path: str):
         view_class = getattr(module, class_name)
         return view_class
     except (ImportError, AttributeError) as e:
-        print(f"Erro ao carregar view {view_path}: {e}")
+        print(f"Error en cargar la vista {view_path}: {e}")
         return None
 
 

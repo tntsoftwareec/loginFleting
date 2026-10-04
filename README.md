@@ -83,3 +83,39 @@ pip list | grep flet
 
 21/02/2026 por Richar Tonato
 añadido a git para control de versiones
+
+COMO CREAR UNA RAMA Y TRABAJAR EN LA RAMA GITHUB
+Visión general creada por IA
+Para crear una rama y trabajar en ella usando la terminal y GitHub, debes actualizar tu repositorio local, crear la nueva rama, hacer cambios, subirlos y abrir un Pull Request.
+
+1. Actualizar la rama principal
+   Antes de empezar, asegúrate de tener la versión más reciente del código principal (main o master):
+
+git pull
+
+2. Crear y cambiar a la nueva rama
+   Crea una nueva rama local y cámbiate a ella de inmediato con un solo comando:
+
+git checkout -b nombre_de_tu_rama
+
+(Sustituye nombre_de_tu_rama por un nombre corto y descriptivo, por ejemplo: feature/nuevo-login).
+
+3. Trabajar y guardar los cambios
+   Modifica los archivos que necesites en tu proyecto. Luego, guarda y confirma los cambios:
+
+Agrega los archivos modificados a la zona de espera:
+
+git add .
+
+Confirma los cambios con un mensaje que describa lo que hiciste:
+
+git commit -m "Mensaje descriptivo de tus cambios"
+
+4. Subir la rama a GitHub
+   Envía tu rama local al repositorio remoto por primera vez vinculándola correctamente:
+
+git push -u origin nombre_de_tu_rama
+
+5. Crear un Pull Request (Solicitud de extracción)
+   Entra a tu repositorio en la página web de GitHub.
+   Verás un aviso que dice que acabas de subir una nueva rama. Haz clic en el botón verde Compare & pull request.

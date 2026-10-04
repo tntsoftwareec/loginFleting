@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<factura id="comprobante" version="1.1.0">
+  <infoTributaria>
+    <ambiente>1</ambiente>
+    <tipoEmision>1</tipoEmision>
+    <razonSocial>FLETING SOLUTIONS S.A.S.</razonSocial>
+    <nombreComercial>FLETING POS &amp; TECH</nombreComercial>
+    <ruc>1792998877001</ruc>
+    <claveAcceso>0210202601179299887700110010010000000041661951411</claveAcceso>
+    <codDoc>01</codDoc>
+    <estab>001</estab>
+    <ptoEmi>001</ptoEmi>
+    <secuencial>000000004</secuencial>
+    <dirMatriz>Av. de los Granados N40-100 y 6 de Diciembre, Quito - Ecuador</dirMatriz>
+  </infoTributaria>
+  <infoFactura>
+    <fechaEmision>02/10/2026</fechaEmision>
+    <dirEstablecimiento>Av. de los Granados N40-100 y 6 de Diciembre, Quito - Ecuador</dirEstablecimiento>
+    <obligadoContabilidad>SI</obligadoContabilidad>
+    <tipoIdentificacionComprador>07</tipoIdentificacionComprador>
+    <razonSocialComprador>CONSUMIDOR FINAL</razonSocialComprador>
+    <identificacionComprador>9999999999999</identificacionComprador>
+    <direccionComprador>Ciudad</direccionComprador>
+    <totalSinImpuestos>1042.50</totalSinImpuestos>
+    <totalDescuento>0.00</totalDescuento>
+    <totalConImpuestos>
+      <totalImpuesto>
+        <codigo>2</codigo>
+        <codigoPorcentaje>4</codigoPorcentaje>
+        <baseImponible>1042.50</baseImponible>
+        <valor>156.38</valor>
+      </totalImpuesto>
+    </totalConImpuestos>
+    <propina>0.00</propina>
+    <importeTotal>1198.88</importeTotal>
+    <moneda>DOLAR</moneda>
+    <pagos>
+      <pago>
+        <formaPago>01</formaPago>
+        <total>1198.88</total>
+      </pago>
+    </pagos>
+  </infoFactura>
+  <detalles>
+    <detalle>
+      <codigoPrincipal>PROD-002</codigoPrincipal>
+      <descripcion>Monitor LG 27 pulgadas Full HD</descripcion>
+      <cantidad>1.00</cantidad>
+      <precioUnitario>220.00</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>220.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>4</codigoPorcentaje>
+          <tarifa>15.00</tarifa>
+          <baseImponible>220.00</baseImponible>
+          <valor>33.00</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+    <detalle>
+      <codigoPrincipal>PROD-003</codigoPrincipal>
+      <descripcion>Teclado Mecánico Inalámbrico RGB</descripcion>
+      <cantidad>1.00</cantidad>
+      <precioUnitario>65.00</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>65.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>4</codigoPorcentaje>
+          <tarifa>15.00</tarifa>
+          <baseImponible>65.00</baseImponible>
+          <valor>9.75</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+    <detalle>
+      <codigoPrincipal>PROD-004</codigoPrincipal>
+      <descripcion>Mouse Óptico Inalámbrico Ergológico</descripcion>
+      <cantidad>1.00</cantidad>
+      <precioUnitario>28.50</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>28.50</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>4</codigoPorcentaje>
+          <tarifa>15.00</tarifa>
+          <baseImponible>28.50</baseImponible>
+          <valor>4.27</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+    <detalle>
+      <codigoPrincipal>PROD-005</codigoPrincipal>
+      <descripcion>Impresora Multifuncional Epson EcoTank</descripcion>
+      <cantidad>3.00</cantidad>
+      <precioUnitario>240.00</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>720.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>4</codigoPorcentaje>
+          <tarifa>15.00</tarifa>
+          <baseImponible>720.00</baseImponible>
+          <valor>108.00</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+    <detalle>
+      <codigoPrincipal>PROD-006</codigoPrincipal>
+      <descripcion>Paquete Papel Bond A4 75g (Resma)</descripcion>
+      <cantidad>2.00</cantidad>
+      <precioUnitario>4.50</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>9.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>4</codigoPorcentaje>
+          <tarifa>15.00</tarifa>
+          <baseImponible>9.00</baseImponible>
+          <valor>1.35</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+  </detalles>
+</factura>
