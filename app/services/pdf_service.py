@@ -6,6 +6,9 @@ from datetime import datetime
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable
+from reportlab.graphics.barcode import code128
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics import renderPDF
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
@@ -228,6 +231,49 @@ class PDFService:
         except Exception:
             qr_img_element = Paragraph("<b>SRI ECUADOR</b><br/>Firma Electrónica", box_text)
 
+        # Generate Code128 barcode with clave_acceso
+        barcode_element = None
+        try:
+            barcode = code128.Code128(
+                clave_acceso,
+                barWidth=0.018 * inch,
+                barHeight=0.45 * inch,
+                humanReadable=False,
+            )
+            barcode_width = barcode.width
+            barcode_height = barcode.height
+            drawing = Drawing(barcode_width, barcode_height)
+            drawing.add(barcode)
+            barcode_buf = io.BytesIO()
+            renderPDF.draw(drawing, barcode_buf, 0, 0)
+            # Render as PNG via reportlab built-in
+            from reportlab.graphics import renderPM
+            barcode_png_buf = io.BytesIO()
+            renderPM.drawToFile(drawing, barcode_png_buf, fmt='PNG')
+            barcode_png_buf.seek(0)
+            # Scale to fit page width
+            max_w = 7.2 * inch
+            scale = min(1.0, max_w / barcode_width)
+            barcode_element = Image(
+                barcode_png_buf,
+                width=barcode_width * scale,
+                height=barcode_height * scale
+            )
+        except Exception:
+            barcode_element = Paragraph(
+                f"<font size=6><b>Clave de Acceso:</b> {clave_acceso}</font>",
+                box_text
+            )
+
+        barcode_label = ParagraphStyle(
+            'BarcodeLabel',
+            parent=styles['Normal'],
+            fontSize=6,
+            leading=8,
+            textColor=colors.HexColor('#64748b'),
+            alignment=1
+        )
+
         info_adicional_text = f"""
         <b>INFORMACIÓN ADICIONAL</b><br/>
         <b>Email Cliente:</b> {client_email}<br/>
@@ -275,6 +321,25 @@ class PDFService:
         ]))
 
         elements.append(footer_table)
+        elements.append(Spacer(1, 10))
+
+        # --- BARCODE SECTION ---
+        barcode_table = Table(
+            [[barcode_element]],
+            colWidths=[7.2 * inch]
+        )
+        barcode_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+            ('PADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(barcode_table)
+        elements.append(Paragraph(
+            "<font size=6 color='#64748b'><b>CLAVE DE ACCESO SRI:</b> " + clave_acceso + "</font>",
+            ParagraphStyle('CA', parent=styles['Normal'], alignment=1, fontSize=6, leading=8)
+        ))
 
         doc.build(elements)
         return str(pdf_file)
