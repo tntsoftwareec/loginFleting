@@ -91,10 +91,15 @@ class POSView:
             expand=True,
         )
 
+        def on_client_changed(e):
+            if dd_client.value:
+                self.selected_client_id = int(dd_client.value)
+
         dd_client = ft.Dropdown(
             label="Seleccionar Cliente",
             hint_text="Buscar cliente...",
             expand=True,
+            on_change=on_client_changed,
         )
 
         def load_initial_data():
@@ -118,12 +123,6 @@ class POSView:
 
             render_catalog()
             render_cart()
-
-        def on_client_changed(e):
-            if dd_client.value:
-                self.selected_client_id = int(dd_client.value)
-
-        dd_client.on_change = on_client_changed
 
         def render_catalog():
             self.catalog_container.controls.clear()
@@ -416,6 +415,7 @@ class POSView:
             def reset_pos(ev):
                 close_dialog(dlg)
                 self.cart_items = []
+                self.selected_client_id = None
                 load_initial_data()
                 show_toast("Venta completada. POS listo para nueva factura.")
 
