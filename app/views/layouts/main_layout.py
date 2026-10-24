@@ -1,7 +1,9 @@
 import flet as ft
+from core import theme as T
 from core.state import AppState
 from core.i18n import I18n
 from configs.routes import ROUTES
+from configs.app_config import AppConfig
 
 class MainLayout(ft.Column):
     def __init__(self, page, content, router):
@@ -15,8 +17,10 @@ class MainLayout(ft.Column):
     def _build(self):
         self.controls.clear()
 
-        # TOP BAR
-        self.controls.append(self._top_bar())
+        # TOP BAR → chrome nativo de la página (page.appbar), no un control más.
+        # El router lo limpia en cada navegación para que rutas sin layout
+        # (p. ej. /login) no hereden la barra de una vista anterior.
+        self._page.appbar = self._top_bar()
 
         # CONTENT
         self.controls.append(
@@ -27,9 +31,8 @@ class MainLayout(ft.Column):
             )
         )
 
-        # BOTTOM BAR (mobile / tablet)
-        if AppState.device != "desktop":
-            self.controls.append(self._bottom_bar())
+        # BOTTOM BAR (visible en todos los dispositivos para navegación)
+        self.controls.append(self._bottom_bar())
 
     # ---------- TOP BAR ----------
     def _top_bar(self):
@@ -60,8 +63,8 @@ class MainLayout(ft.Column):
             ft.PopupMenuItem(
                 content=ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.LOGOUT_ROUNDED, color="#ef4444", size=18),
-                        ft.Text("Cerrar sesión", color="#ef4444", size=13),
+                        ft.Icon(ft.Icons.LOGOUT_ROUNDED, color=T.DANGER, size=18),
+                        ft.Text("Cerrar sesión", color=T.DANGER, size=13),
                     ],
                     spacing=10,
                 ),
@@ -73,14 +76,14 @@ class MainLayout(ft.Column):
         if user:
             title_widget = ft.Row(
                 controls=[
-                    ft.Icon(ft.Icons.POINT_OF_SALE_ROUNDED, color="#3b82f6", size=24),
+                    ft.Icon(ft.Icons.POINT_OF_SALE_ROUNDED, color=T.INFO, size=24),
                     ft.Column(
                         controls=[
-                            ft.Text("FLETING POS & BILLING", size=15, weight=ft.FontWeight.BOLD),
+                            ft.Text(AppConfig.APP_NAME, size=15, weight=ft.FontWeight.BOLD),
                             ft.Text(
                                 f"{user.get('name', user.get('email', ''))}  ·  {user.get('role', 'Admin')}",
                                 size=10,
-                                color=ft.Colors.GREEN_300,
+                                color=T.SUCCESS_TEXT,
                             ),
                         ],
                         spacing=0,
@@ -90,39 +93,74 @@ class MainLayout(ft.Column):
                 spacing=10,
             )
         else:
-            title_widget = ft.Text("FLETING POS & BILLING", size=16, weight=ft.FontWeight.BOLD)
+            title_widget = ft.Text(AppConfig.APP_NAME, size=16, weight=ft.FontWeight.BOLD)
 
-        # Quick action buttons for topbar
-        quick_actions = [
-            ft.IconButton(ft.Icons.POINT_OF_SALE_ROUNDED, tooltip="Punto de Venta (POS)", icon_color="#059669", on_click=lambda e: self.router.navigate("/pos")),
-            ft.IconButton(ft.Icons.RECEIPT_LONG_ROUNDED, tooltip="Facturas", icon_color="#3b82f6", on_click=lambda e: self.router.navigate("/invoices")),
-            ft.IconButton(ft.Icons.PEOPLE_ROUNDED, tooltip="Clientes", icon_color="#60a5fa", on_click=lambda e: self.router.navigate("/clients")),
-            ft.IconButton(ft.Icons.INVENTORY_2_ROUNDED, tooltip="Productos", icon_color="#a855f7", on_click=lambda e: self.router.navigate("/products")),
-            ft.IconButton(ft.Icons.BUSINESS_ROUNDED, tooltip="Empresa & Firma", icon_color="#ec4899", on_click=lambda e: self.router.navigate("/company")),
-        ]
+        # Navigation history buttons (back/forward)
+        nav_buttons = []
+        if self.router.can_go_back():
+            nav_buttons.append(
+                ft.IconButton(
+                    icon=ft.Icons.ARROW_BACK_ROUNDED,
+                    icon_color=T.TEXT_MUTED,
+                    tooltip="Atrás",
+                    on_click=lambda e: self.router.go_back(),
+                )
+            )
+        if self.router.can_go_forward():
+            nav_buttons.append(
+                ft.IconButton(
+                    icon=ft.Icons.ARROW_FORWARD_ROUNDED,
+                    icon_color=T.TEXT_MUTED,
+                    tooltip="Adelante",
+                    on_click=lambda e: self.router.go_forward(),
+                )
+            )
+
+        # Quick action buttons for topbar (solo desktop/tablet)
+        quick_actions = []
+        if AppState.device != "mobile":
+            quick_actions = [
+                ft.IconButton(ft.Icons.POINT_OF_SALE_ROUNDED, tooltip="POS", icon_color=T.SUCCESS_STRONG, on_click=lambda e: self.router.navigate("/pos")),
+                ft.IconButton(ft.Icons.RECEIPT_LONG_ROUNDED, tooltip="Facturas", icon_color=T.INFO, on_click=lambda e: self.router.navigate("/invoices")),
+                ft.IconButton(ft.Icons.DESCRIPTION_ROUNDED, tooltip="Cotizaciones", icon_color=T.PURPLE_TEXT, on_click=lambda e: self.router.navigate("/quotations")),
+                ft.IconButton(ft.Icons.PEOPLE_ROUNDED, tooltip="Clientes", icon_color=T.INFO_TEXT, on_click=lambda e: self.router.navigate("/clients")),
+                ft.IconButton(ft.Icons.INVENTORY_2_ROUNDED, tooltip="Productos", icon_color=T.PURPLE, on_click=lambda e: self.router.navigate("/products")),
+                ft.IconButton(ft.Icons.WAREHOUSE_ROUNDED, tooltip="Inventario", icon_color=T.WARNING, on_click=lambda e: self.router.navigate("/inventory")),
+                ft.IconButton(ft.Icons.BUSINESS_ROUNDED, tooltip="Empresa", icon_color=T.PINK, on_click=lambda e: self.router.navigate("/company")),
+            ]
+
+        # En móvil, solo mostrar logout y menú
+        actions = []
+        if quick_actions:
+            actions.append(ft.Row(quick_actions, spacing=2))
+            actions.append(ft.VerticalDivider(width=1, color=T.BORDER_STRONG))
+        actions.append(
+            ft.IconButton(
+                icon=ft.Icons.LOGOUT_ROUNDED,
+                icon_color=T.DANGER,
+                tooltip="Cerrar sesión",
+                on_click=self._do_logout,
+            )
+        )
+        actions.append(
+            ft.PopupMenuButton(
+                icon=ft.Icons.MENU,
+                items=items,
+            )
+        )
 
         return ft.AppBar(
             title=title_widget,
-            actions=[
-                ft.Row(quick_actions, spacing=2),
-                ft.VerticalDivider(width=1, color="#334155"),
-                ft.IconButton(
-                    icon=ft.Icons.LOGOUT_ROUNDED,
-                    icon_color="#ef4444",
-                    tooltip="Cerrar sesión",
-                    on_click=self._do_logout,
-                ),
-                ft.PopupMenuButton(
-                    icon=ft.Icons.MENU,
-                    items=items,
-                ),
-            ],
+            leading=ft.Row(nav_buttons, spacing=0) if nav_buttons else None,
+            actions=actions,
+            bgcolor=T.APPBAR_BG,
+            color=T.TEXT,
         )
 
     def _do_logout(self, e=None):
         """Limpia el usuario de AppState y navega al login."""
         AppState.current_user = None
-        self.router.navigate("/login")
+        self.router.navigate("/login", clear_history=True)
 
 
     # ---------- BOTTOM BAR ----------
@@ -144,6 +182,7 @@ class MainLayout(ft.Column):
             self.router.navigate(paths[e.control.selected_index])
 
         return ft.NavigationBar(
+            bgcolor=T.NAV_BG,
             destinations=destinations,
             selected_index=paths.index(AppState.current_route)
             if AppState.current_route in paths else 0,

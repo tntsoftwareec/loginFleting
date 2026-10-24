@@ -1,4 +1,4 @@
-import hashlib
+import bcrypt
 from core.base_model import BaseModel
 from core.orm import ForeignKey
 
@@ -10,19 +10,30 @@ class UserModel(BaseModel):
     def hash_password(password: str) -> str:
         if not password:
             return ""
-        return hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @classmethod
     def authenticate(cls, email: str, password: str):
         users = cls.where(email=email.strip().lower())
         if not users:
             return None
-        
-        user = users[0]
-        hashed_input = cls.hash_password(password)
 
-        # Allow plain match (for legacy demo) or sha256 match
-        if user["password"] in (password, hashed_input):
+        user = users[0]
+
+        # bcrypt check only — no plaintext or sha256 fallback
+        if not password or not user.get("password"):
+            return None
+
+        try:
+            password_matches = bcrypt.checkpw(
+                password.encode("utf-8"),
+                user["password"].encode("utf-8")
+            )
+        except (ValueError, TypeError):
+            # Invalid hash format stored in DB
+            return None
+
+        if password_matches:
             from app.models.role_model import RoleModel
             role_id = user.get("role_id")
             role_obj = RoleModel.find(role_id) if role_id else None

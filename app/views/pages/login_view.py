@@ -1,13 +1,32 @@
 
+import os
+
 import flet as ft
-from app.controllers.login_controller import LoginController
+from core import theme as T
+from core.paths import ASSETS_DIR
 from core.state import AppState
+from configs.app_config import AppConfig
+from app.controllers.company_controller import CompanyController
+from app.controllers.login_controller import LoginController
 
 
 def _all_border(width: int, color: str) -> ft.Border:
     """Helper para crear borde uniforme en todos los lados."""
     side = ft.BorderSide(width, color)
     return ft.Border(top=side, right=side, bottom=side, left=side)
+
+
+def _login_logo_src() -> str:
+    """Logo de la empresa configurado en Mi Empresa, o el predeterminado."""
+    try:
+        company = CompanyController.get_info() or {}
+        logo_path = str(company.get("logo_path") or "").strip()
+        if logo_path and os.path.isfile(logo_path):
+            return logo_path
+    except Exception:  # noqa: BLE001
+        # Un logo ausente o una BD no inicializada no deben impedir el login.
+        pass
+    return str(ASSETS_DIR / "image.png")
 
 
 class LoginView:
@@ -22,11 +41,11 @@ class LoginView:
             hint_text="usuario@ejemplo.com",
             prefix_icon=ft.Icons.EMAIL_OUTLINED,
             keyboard_type=ft.KeyboardType.EMAIL,
-            bgcolor="#000000",
-            border_color="#334155",
-            focused_border_color="#6366f1",
-            color="#f8fafc",
-            label_style=ft.TextStyle(color="#94a3b8"),
+            bgcolor=T.LOGIN_INPUT,
+            border_color=T.INPUT_BORDER,
+            focused_border_color=T.INDIGO,
+            color=T.TEXT,
+            label_style=ft.TextStyle(color=T.TEXT_MUTED),
             border_radius=12,
             height=56,
         )
@@ -36,18 +55,18 @@ class LoginView:
             prefix_icon=ft.Icons.LOCK_OUTLINED,
             password=True,
             can_reveal_password=True,
-            bgcolor="#000000",
-            border_color="#334155",
-            focused_border_color="#6366f1",
-            color="#f8fafc",
-            label_style=ft.TextStyle(color="#94a3b8"),
+            bgcolor=T.LOGIN_INPUT,
+            border_color=T.INPUT_BORDER,
+            focused_border_color=T.INDIGO,
+            color=T.TEXT,
+            label_style=ft.TextStyle(color=T.TEXT_MUTED),
             border_radius=12,
             height=56,
         )
 
         error_text = ft.Text(
             "",
-            color="#ef4444",
+            color=T.DANGER,
             size=13,
             visible=False,
         )
@@ -80,10 +99,10 @@ class LoginView:
         login_btn = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Icon(ft.Icons.LOGIN_ROUNDED, color="#ffffff", size=20),
+                    ft.Icon(ft.Icons.LOGIN_ROUNDED, color=T.ON_ACCENT, size=20),
                     ft.Text(
                         "Iniciar Sesión",
-                        color="#ffffff",
+                        color=T.ON_ACCENT,
                         size=16,
                         weight=ft.FontWeight.W_600,
                     ),
@@ -94,53 +113,36 @@ class LoginView:
             padding=16,
             border_radius=12,
             gradient=ft.LinearGradient(
-                colors=["#6366f1", "#4f46e5"],
+                colors=[T.INDIGO, T.INDIGO_DARK],
                 begin=ft.Alignment(-1, 0),
                 end=ft.Alignment(1, 0),
             ),
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=20,
-                color="#3b3acc55",
+                color=T.PRIMARY_SHADOW,
                 offset=ft.Offset(0, 8),
             ),
             on_click=do_login,
             ink=True,
         )
 
-        # ── botones rápidos de demo ──────────────────────────────────────────
-        def quick_login(demo_email, demo_pass):
-            email_in.value = demo_email
-            pass_in.value = demo_pass
-            self.page.update()
-            do_login()
-
-        demo_admin_btn = ft.TextButton(
-            "Admin Demo",
-            icon=ft.Icons.ADMIN_PANEL_SETTINGS_ROUNDED,
-            style=ft.ButtonStyle(color="#6366f1"),
-            on_click=lambda e: quick_login("admin@pos.com", "admin123"),
-        )
-
-        demo_cajero_btn = ft.TextButton(
-            "Cajero Demo",
-            icon=ft.Icons.POINT_OF_SALE_ROUNDED,
-            style=ft.ButtonStyle(color="#10b981"),
-            on_click=lambda e: quick_login("cajero@pos.com", "cajero123"),
-        )
-
-        # ── icono de logo ────────────────────────────────────────────────────
+        # ── logo de la empresa ──────────────────────────────────────────────
         logo_icon = ft.Container(
-            content=ft.Image(src="assets/icon.png", width=600, height=600),
-            width=100,
-            height=100,
-            border_radius=50,
-            gradient=ft.LinearGradient(
-                colors=["#6366f1", "#4f46e5"],
-                begin=ft.Alignment(-1, -1),
-                end=ft.Alignment(1, 1),
+            content=ft.Image(
+                src=_login_logo_src(),
+                width=96,
+                height=96,
+                fit=ft.BoxFit.CONTAIN,
             ),
+            width=112,
+            height=112,
+            padding=8,
+            border_radius=20,
+            bgcolor=T.LOGIN_INPUT,
+            border=_all_border(1, T.LOGIN_BORDER),
             alignment=ft.Alignment(0, 0),
+            clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         )
 
         # ── tarjeta central ─────────────────────────────────────────────────
@@ -151,14 +153,14 @@ class LoginView:
                         controls=[
                             logo_icon,
                             ft.Text(
-                                "Bienvenido",
-                                color="#f8fafc",
-                                size=26,
+                                AppConfig.APP_NAME,
+                                color=T.TEXT,
+                                size=28,
                                 weight=ft.FontWeight.BOLD,
                             ),
                             ft.Text(
-                                "Ingresa tus credenciales para continuar",
-                                color="#64748b",
+                                "Bienvenido. Ingresa tus credenciales para continuar",
+                                color=T.TEXT_SUBTLE,
                                 size=13,
                             ),
                         ],
@@ -171,38 +173,19 @@ class LoginView:
                     error_text,
                     ft.Container(height=4),
                     login_btn,
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Divider(color="#1e293b"),
-                                ft.Text(
-                                    "Accesos rápidos de prueba:",
-                                    color="#475569",
-                                    size=11,
-                                    text_align=ft.TextAlign.CENTER,
-                                ),
-                                ft.Row(
-                                    controls=[demo_admin_btn, demo_cajero_btn],
-                                    alignment=ft.MainAxisAlignment.CENTER,
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=4,
-                        ),
-                    ),
                 ],
                 spacing=12,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
-            padding=40,
-            width=420,
-            bgcolor="#000000",
+            padding=20,
+            width=min(420, self.page.width - 40) if self.page.width > 0 else 420,
+            bgcolor=T.LOGIN_CARD,
             border_radius=24,
-            border=_all_border(1, "#1e293b"),
+            border=_all_border(1, T.LOGIN_BORDER),
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=60,
-                color="#00000066",
+                color=T.SHADOW,
                 offset=ft.Offset(0, 20),
             ),
         )
@@ -211,7 +194,7 @@ class LoginView:
         bg = ft.Container(
             expand=True,
             gradient=ft.LinearGradient(
-                colors=["#000000", "#0f172a", "#1e1b4b"],
+                colors=[T.LOGIN_BG],
                 begin=ft.Alignment(-1, -1),
                 end=ft.Alignment(1, 1),
             ),

@@ -1,6 +1,9 @@
 import flet as ft
+from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.client_controller import ClientController
+from app.views.components.import_export import build_import_export_bar
+from app.views.ui_helpers import is_mobile_page
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
@@ -19,9 +22,9 @@ class ClientsView:
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Icon(ft.Icons.LOCK_OUTLINED, color="#ef4444", size=64),
-                        ft.Text("Acceso Restringido", color="#f8fafc", size=22, weight=ft.FontWeight.BOLD),
-                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color="#94a3b8", size=14),
+                        ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
+                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color=T.TEXT_MUTED, size=14),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -56,13 +59,17 @@ class ClientsView:
             self.page.update()
 
         def show_toast(message: str, is_error: bool = False):
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text(message, color="#ffffff"),
-                bgcolor="#ef4444" if is_error else "#10b981",
-                duration=3000
+            snack = ft.SnackBar(
+                content=ft.Text(message, color=T.ON_ACCENT),
+                bgcolor=T.DANGER if is_error else T.SUCCESS,
+                duration=3000,
             )
-            self.page.snack_bar.open = True
-            self.page.update()
+            if hasattr(self.page, "show_dialog"):
+                self.page.show_dialog(snack)
+            else:
+                self.page.overlay.append(snack)
+                snack.open = True
+                self.page.update()
 
         def load_data():
             self.clients_list = ClientController.get_all()
@@ -89,8 +96,8 @@ class ClientsView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color="#64748b"),
-                                ft.Text("No se encontraron clientes", color="#94a3b8", size=16),
+                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.TEXT_SUBTLE),
+                                ft.Text("No se encontraron clientes", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=10
@@ -103,16 +110,17 @@ class ClientsView:
                 return
 
             rows = []
+            cards = []
             for c in filtered:
                 is_active = c.get("status", "active") == "active"
                 status_chip = ft.Container(
                     content=ft.Text(
                         "Activo" if is_active else "Inactivo",
                         size=11,
-                        color="#34d399" if is_active else "#f87171",
+                        color=T.SUCCESS_TEXT if is_active else T.DANGER_TEXT,
                         weight=ft.FontWeight.BOLD,
                     ),
-                    bgcolor="#065f4633" if is_active else "#991b1b33",
+                    bgcolor=T.SUCCESS_BG if is_active else T.DANGER_BG,
                     padding=ft.Padding.symmetric(horizontal=8, vertical=4),
                     border_radius=12,
                 )
@@ -124,14 +132,14 @@ class ClientsView:
                     controls=[
                         ft.IconButton(
                             icon=ft.Icons.EDIT_OUTLINED,
-                            icon_color="#3b82f6" if can_update else "#64748b",
+                            icon_color=T.INFO if can_update else T.TEXT_SUBTLE,
                             tooltip="Editar cliente" if can_update else "Sin permiso",
                             disabled=not can_update,
                             on_click=lambda e, client=c: open_client_dialog(client),
                         ),
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINED,
-                            icon_color="#ef4444" if can_delete else "#64748b",
+                            icon_color=T.DANGER if can_delete else T.TEXT_SUBTLE,
                             tooltip="Eliminar cliente" if can_delete else "Sin permiso",
                             disabled=not can_delete,
                             on_click=lambda e, client=c: open_delete_dialog(client),
@@ -155,32 +163,72 @@ class ClientsView:
                     )
                 )
 
-            data_table = ft.DataTable(
-                columns=[
-                    ft.DataColumn(ft.Text("TIPO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("IDENTIFICACIÓN", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("RAZÓN SOCIAL / NOMBRE", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("EMAIL", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("TELÉFONO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("DIRECCIÓN", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                ],
-                rows=rows,
-                heading_row_color="#1e293b",
-                horizontal_margin=15,
-                column_spacing=20,
-            )
-
-            self.clients_container.controls.append(
-                ft.Container(
-                    content=data_table,
-                    bgcolor="#0f172a",
-                    border_radius=10,
-                    border=_all_border(1, "#1e293b"),
-                    padding=10,
+                cards.append(
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Column(
+                                            controls=[
+                                                ft.Text(c["razon_social"], size=15, weight=ft.FontWeight.BOLD, color=T.TEXT),
+                                                ft.Text(f'{c["tipo_documento"]} · {c["identificacion"]}', size=11, color=T.TEXT_MUTED),
+                                            ],
+                                            spacing=2,
+                                            expand=True,
+                                        ),
+                                        status_chip,
+                                    ],
+                                    vertical_alignment=ft.CrossAxisAlignment.START,
+                                ),
+                                ft.Row([ft.Icon(ft.Icons.EMAIL_OUTLINED, size=14, color=T.TEXT_SUBTLE),
+                                        ft.Text(c["email"] or "-", size=12, color=T.TEXT_SECONDARY)], spacing=6),
+                                ft.Row([ft.Icon(ft.Icons.PHONE_OUTLINED, size=14, color=T.TEXT_SUBTLE),
+                                        ft.Text(c.get("telefono") or "-", size=12, color=T.TEXT_SECONDARY)], spacing=6),
+                                ft.Row([ft.Icon(ft.Icons.LOCATION_ON_OUTLINED, size=14, color=T.TEXT_SUBTLE),
+                                        ft.Text(c.get("direccion") or "-", size=12, color=T.TEXT_SECONDARY)], spacing=6),
+                                ft.Row([actions], alignment=ft.MainAxisAlignment.END),
+                            ],
+                            spacing=8,
+                        ),
+                        padding=14,
+                        bgcolor=T.SURFACE,
+                        border_radius=10,
+                        border=_all_border(1, T.SURFACE_ALT),
+                    )
                 )
-            )
+
+            if is_mobile_page(self.page):
+                self.clients_container.controls.append(
+                    ft.Column(controls=cards, spacing=10)
+                )
+            else:
+                data_table = ft.DataTable(
+                    columns=[
+                        ft.DataColumn(ft.Text("TIPO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("IDENTIFICACIÓN", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("RAZÓN SOCIAL / NOMBRE", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("EMAIL", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("TELÉFONO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("DIRECCIÓN", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ],
+                    rows=rows,
+                    heading_row_color=T.SURFACE_ALT,
+                    horizontal_margin=15,
+                    column_spacing=20,
+                )
+
+                self.clients_container.controls.append(
+                    ft.Container(
+                        content=data_table,
+                        bgcolor=T.SURFACE,
+                        border_radius=10,
+                        border=_all_border(1, T.SURFACE_ALT),
+                        padding=10,
+                    )
+                )
             self.page.update()
 
         # Dialog Create/Edit
@@ -276,8 +324,8 @@ class ClientsView:
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
                     ft.FilledButton(
                         "Guardar",
-                        bgcolor="#2563eb",
-                        color="#ffffff",
+                        bgcolor=T.PRIMARY,
+                        color=T.ON_ACCENT,
                         on_click=save_client,
                     ),
                 ],
@@ -296,11 +344,11 @@ class ClientsView:
                     show_toast(msg, is_error=True)
 
             dlg = ft.AlertDialog(
-                title=ft.Text("Confirmar Eliminación", color="#ef4444", weight=ft.FontWeight.BOLD),
+                title=ft.Text("Confirmar Eliminación", color=T.DANGER, weight=ft.FontWeight.BOLD),
                 content=ft.Text(f"¿Estás seguro de eliminar el cliente '{client['razon_social']}'?"),
                 actions=[
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
-                    ft.FilledButton("Eliminar", bgcolor="#ef4444", color="#ffffff", on_click=confirm_delete),
+                    ft.FilledButton("Eliminar", bgcolor=T.DANGER, color=T.ON_ACCENT, on_click=confirm_delete),
                 ],
             )
             show_dialog(dlg)
@@ -315,46 +363,55 @@ class ClientsView:
             prefix_icon=ft.Icons.SEARCH,
             on_change=on_search_change,
             height=42,
+            width=260,
             text_size=14,
             content_padding=ft.Padding.symmetric(horizontal=10, vertical=0),
-            expand=True,
         )
 
         can_write = AppState.has_permission("can_write")
         btn_add = ft.FilledButton(
             "Nuevo Cliente",
             icon=ft.Icons.ADD,
-            bgcolor="#2563eb" if can_write else "#475569",
-            color="#ffffff",
+            bgcolor=T.PRIMARY if can_write else T.DISABLED_BG,
+            color=T.ON_ACCENT,
             disabled=not can_write,
             on_click=lambda e: open_client_dialog(),
             height=42,
         )
 
+        import_export_bar = build_import_export_bar(self.page, kind="customers", on_changed=load_data)
+
         header_card = ft.Container(
-            content=ft.Row(
+            content=ft.Column(
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.PEOPLE_ROUNDED, size=28, color="#3b82f6"),
+                            ft.Icon(ft.Icons.PEOPLE_ROUNDED, size=28, color=T.INFO),
                             ft.Column(
                                 controls=[
-                                    ft.Text("Gestión de Clientes", size=20, weight=ft.FontWeight.BOLD, color="#f8fafc"),
-                                    ft.Text("Administración del directorio de clientes y contactos", size=12, color="#94a3b8"),
+                                    ft.Text("Gestión de Clientes", size=20, weight=ft.FontWeight.BOLD, color=T.TEXT),
+                                    ft.Text("Administración del directorio de clientes y contactos", size=12, color=T.TEXT_MUTED),
                                 ],
                                 spacing=0,
+                                expand=True,
                             ),
                         ],
                         spacing=12,
                     ),
-                    ft.Row([search_field, btn_add], spacing=10, width=500),
+                    ft.Row(
+                        controls=[search_field, btn_add, import_export_bar],
+                        spacing=10,
+                        wrap=True,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
                 ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                spacing=12,
+                tight=True,
             ),
             padding=16,
-            bgcolor="#0f172a",
+            bgcolor=T.SURFACE,
             border_radius=10,
-            border=_all_border(1, "#1e293b"),
+            border=_all_border(1, T.SURFACE_ALT),
         )
 
         main_content = ft.Column(

@@ -1,19 +1,32 @@
 {
   "app": {
-    "name": "Loginfleting"
+    "name": "TntPos"
   },
   "menu": {
     "home": "Início",
+    "pos": "Ponto de Venda",
+    "invoices": "Faturas",
+    "quotations": "Cotações",
+    "clients": "Clientes",
+    "suppliers": "Fornecedores",
+    "products": "Produtos",
+    "inventory": "Inventário",
+    "services": "Serviços",
+    "company": "Minha Empresa",
     "users": "Usuários",
-    "roles": "Funções",
+    "roles": "Funções e Permissões",
     "settings": "Configurações",
     "help": "Ajuda"
   },
   "home": {
-    "title": "Bem-vindo ao Loginfleting"
+    "title": "Bem-vindo ao TntPos"
   },
   "settings": {
     "title": "Configurações",
-    "language": "Idioma"
+    "language": "Idioma",
+    "theme": "Tema",
+    "theme_light": "Claro",
+    "theme_dark": "Escuro",
+    "theme_system": "Sistema"
   }
 }

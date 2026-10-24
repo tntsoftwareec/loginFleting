@@ -2,12 +2,7 @@
 from app.models.user_model import UserModel
 
 class LoginController:
-    """Controlador de autenticación con SQLite.
-    
-    Usuarios de demo en BD:
-        admin@pos.com  / admin123
-        cajero@pos.com / cajero123
-    """
+    """Controlador de autenticación con SQLite."""
 
     @classmethod
     def authenticate(cls, email: str, password: str):

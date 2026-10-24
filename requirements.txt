@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────
+# Dependencias de runtime de la aplicación.
+#
+# IMPORTANTE: aquí van SOLO las dependencias directas.
+#
+# `flet build` (vía serious_python) resuelve las dependencias transitivas
+# para la plataforma destino. Si se "congela" el árbol completo con
+# `pip freeze`, se fijan versiones que no existen en todas las
+# plataformas y el build falla, por ejemplo:
+#
+#   ERROR: Could not find a version that satisfies the requirement
+#          cffi==2.1.1 (from versions: 2.0.0)
+#
+# porque en el índice para Android (arm64-v8a) solo hay cffi 2.0.0.
+# Tampoco deben incluirse herramientas de desarrollo como flet-cli o
+# flet-desktop: no tienen wheels para Android/iOS. Para eso está
+# `requirements-dev.txt`.
+# ─────────────────────────────────────────────────────────────────────
+
+# Flet 1.x: la app usa ft.run() (el antiguo ft.app() fue eliminado).
+flet>=0.86.5
+
+bcrypt>=4.0.0
+cryptography>=42.0.0
+openpyxl>=3.1.0
+qrcode>=7.4.2
+reportlab>=4.0.0
+pillow>=10.0.0
+Faker>=24.0.0
+
+# Firma XAdES-BES y envío a los web services del SRI.
+signxml>=5.0
+requests>=2.31

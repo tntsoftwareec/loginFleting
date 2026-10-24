@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+from core.paths import GENERATED_DIR
 
 class XMLService:
     @staticmethod
@@ -182,7 +182,7 @@ class XMLService:
         xml_pretty = parsed.toprettyxml(indent="  ", encoding="utf-8").decode("utf-8")
 
         # Save to assets/invoices/xml/
-        xml_dir = BASE_DIR / "assets" / "invoices" / "xml"
+        xml_dir = GENERATED_DIR / "invoices" / "xml"
         xml_dir.mkdir(parents=True, exist_ok=True)
         file_name = f"FAC_{clave_acceso}.xml"
         file_path = xml_dir / file_name

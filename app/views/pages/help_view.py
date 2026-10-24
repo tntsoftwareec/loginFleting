@@ -1,5 +1,6 @@
 
 import flet as ft
+from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.help_controller import HelpController
 from flet import UrlLauncher
@@ -41,7 +42,7 @@ class HelpView:
                 ft.Text(
                     "Aqui você encontra links úteis para documentação, "
                     "suporte e contribuição com o projeto.",
-                    color=ft.Colors.GREY_600,
+                    color=T.TEXT_MUTED,
                 ),
 
                 ft.Divider(),

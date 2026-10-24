@@ -1,4 +1,5 @@
 import flet as ft
+from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.service_controller import ServiceController
 from core.state import AppState
@@ -19,9 +20,9 @@ class ServicesView:
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Icon(ft.Icons.LOCK_OUTLINED, color="#ef4444", size=64),
-                        ft.Text("Acceso Restringido", color="#f8fafc", size=22, weight=ft.FontWeight.BOLD),
-                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color="#94a3b8", size=14),
+                        ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
+                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color=T.TEXT_MUTED, size=14),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -56,17 +57,38 @@ class ServicesView:
             self.page.update()
 
         def show_toast(message: str, is_error: bool = False):
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text(message, color="#ffffff"),
-                bgcolor="#ef4444" if is_error else "#10b981",
-                duration=3000
+            snack = ft.SnackBar(
+                content=ft.Text(message, color=T.ON_ACCENT),
+                bgcolor=T.DANGER if is_error else T.SUCCESS,
+                duration=3000,
             )
-            self.page.snack_bar.open = True
-            self.page.update()
+            if hasattr(self.page, "show_dialog"):
+                self.page.show_dialog(snack)
+            else:
+                self.page.overlay.append(snack)
+                snack.open = True
+                self.page.update()
 
         def load_data():
             self.services_list = ServiceController.get_all()
             render_services()
+
+        def queue_service(serv: dict, route: str):
+            """Abre el POS o una nueva cotización con el servicio ya cargado."""
+            if not AppState.has_permission("can_write"):
+                show_toast("No tienes permisos para facturar o cotizar.", is_error=True)
+                return
+            AppState.pending_cart_items = [{
+                "id": serv.get("id"),
+                "tipo": "servicio",
+                "codigo": serv.get("codigo", "SERV"),
+                "nombre": serv.get("nombre", "Servicio"),
+                "precio": float(serv.get("precio") or 0),
+                "cantidad": 1,
+                "descuento": 0.0,
+                "iva_porcentaje": float(serv.get("iva_porcentaje") or 0),
+            }]
+            self.router.navigate(route)
 
         def render_services():
             self.services_container.controls.clear()
@@ -88,8 +110,8 @@ class ServicesView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color="#64748b"),
-                                ft.Text("No se encontraron servicios", color="#94a3b8", size=16),
+                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.TEXT_SUBTLE),
+                                ft.Text("No se encontraron servicios", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=10
@@ -108,29 +130,58 @@ class ServicesView:
                     content=ft.Text(
                         "Activo" if is_active else "Inactivo",
                         size=11,
-                        color="#34d399" if is_active else "#f87171",
+                        color=T.SUCCESS_TEXT if is_active else T.DANGER_TEXT,
                         weight=ft.FontWeight.BOLD,
                     ),
-                    bgcolor="#065f4633" if is_active else "#991b1b33",
+                    bgcolor=T.SUCCESS_BG if is_active else T.DANGER_BG,
                     padding=ft.Padding.symmetric(horizontal=8, vertical=4),
                     border_radius=12,
                 )
 
+                can_write = AppState.has_permission("can_write")
                 can_update = AppState.has_permission("can_update")
                 can_delete = AppState.has_permission("can_delete")
 
                 actions = ft.Row(
                     controls=[
+                        ft.PopupMenuButton(
+                            icon=ft.Icons.ADD_CIRCLE_OUTLINE_ROUNDED,
+                            icon_color=T.SUCCESS_STRONG if can_write else T.TEXT_SUBTLE,
+                            tooltip="Facturar o cotizar este servicio" if can_write else "Sin permiso",
+                            disabled=not can_write,
+                            items=[
+                                ft.PopupMenuItem(
+                                    content=ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.POINT_OF_SALE_ROUNDED, size=18, color=T.SUCCESS_STRONG),
+                                            ft.Text("Facturar este servicio", size=13),
+                                        ],
+                                        spacing=10,
+                                    ),
+                                    on_click=lambda e, serv=s: queue_service(serv, "/pos"),
+                                ),
+                                ft.PopupMenuItem(
+                                    content=ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.NOTE_ADD_ROUNDED, size=18, color=T.PURPLE_TEXT),
+                                            ft.Text("Cotizar este servicio", size=13),
+                                        ],
+                                        spacing=10,
+                                    ),
+                                    on_click=lambda e, serv=s: queue_service(serv, "/quotations/new"),
+                                ),
+                            ],
+                        ),
                         ft.IconButton(
                             icon=ft.Icons.EDIT_OUTLINED,
-                            icon_color="#3b82f6" if can_update else "#64748b",
+                            icon_color=T.INFO if can_update else T.TEXT_SUBTLE,
                             tooltip="Editar servicio" if can_update else "Sin permiso",
                             disabled=not can_update,
                             on_click=lambda e, serv=s: open_service_dialog(serv),
                         ),
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINED,
-                            icon_color="#ef4444" if can_delete else "#64748b",
+                            icon_color=T.DANGER if can_delete else T.TEXT_SUBTLE,
                             tooltip="Eliminar servicio" if can_delete else "Sin permiso",
                             disabled=not can_delete,
                             on_click=lambda e, serv=s: open_delete_dialog(serv),
@@ -142,10 +193,10 @@ class ServicesView:
                 rows.append(
                     ft.DataRow(
                         cells=[
-                            ft.DataCell(ft.Text(s["codigo"], size=12, weight=ft.FontWeight.BOLD, color="#38bdf8")),
+                            ft.DataCell(ft.Text(s["codigo"], size=12, weight=ft.FontWeight.BOLD, color=T.CYAN_TEXT)),
                             ft.DataCell(ft.Text(s["nombre"], size=13, weight=ft.FontWeight.W_500)),
                             ft.DataCell(ft.Text(s.get("categoria") or "Servicios", size=12)),
-                            ft.DataCell(ft.Text(f"${float(s['precio']):.2f}", size=13, weight=ft.FontWeight.BOLD, color="#34d399")),
+                            ft.DataCell(ft.Text(f"${float(s['precio']):.2f}", size=13, weight=ft.FontWeight.BOLD, color=T.SUCCESS_TEXT)),
                             ft.DataCell(ft.Text(f"{float(s.get('iva_porcentaje', 15.0)):.0f}%", size=12)),
                             ft.DataCell(status_chip),
                             ft.DataCell(actions),
@@ -155,16 +206,16 @@ class ServicesView:
 
             data_table = ft.DataTable(
                 columns=[
-                    ft.DataColumn(ft.Text("CÓDIGO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("NOMBRE SERVICIO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("CATEGORÍA", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("PRECIO TARIFA", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color="#94a3b8")),
+                    ft.DataColumn(ft.Text("CÓDIGO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("NOMBRE SERVICIO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("CATEGORÍA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("PRECIO TARIFA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                 ],
                 rows=rows,
-                heading_row_color="#1e293b",
+                heading_row_color=T.SURFACE_ALT,
                 horizontal_margin=15,
                 column_spacing=20,
             )
@@ -172,9 +223,9 @@ class ServicesView:
             self.services_container.controls.append(
                 ft.Container(
                     content=data_table,
-                    bgcolor="#0f172a",
+                    bgcolor=T.SURFACE,
                     border_radius=10,
-                    border=_all_border(1, "#1e293b"),
+                    border=_all_border(1, T.SURFACE_ALT),
                     padding=10,
                 )
             )
@@ -269,8 +320,8 @@ class ServicesView:
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
                     ft.FilledButton(
                         "Guardar",
-                        bgcolor="#2563eb",
-                        color="#ffffff",
+                        bgcolor=T.PRIMARY,
+                        color=T.ON_ACCENT,
                         on_click=save_service,
                     ),
                 ],
@@ -289,11 +340,11 @@ class ServicesView:
                     show_toast(msg, is_error=True)
 
             dlg = ft.AlertDialog(
-                title=ft.Text("Confirmar Eliminación", color="#ef4444", weight=ft.FontWeight.BOLD),
+                title=ft.Text("Confirmar Eliminación", color=T.DANGER, weight=ft.FontWeight.BOLD),
                 content=ft.Text(f"¿Estás seguro de eliminar el servicio '{serv['nombre']}'?"),
                 actions=[
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
-                    ft.FilledButton("Eliminar", bgcolor="#ef4444", color="#ffffff", on_click=confirm_delete),
+                    ft.FilledButton("Eliminar", bgcolor=T.DANGER, color=T.ON_ACCENT, on_click=confirm_delete),
                 ],
             )
             show_dialog(dlg)
@@ -316,8 +367,8 @@ class ServicesView:
         btn_add = ft.FilledButton(
             "Nuevo Servicio",
             icon=ft.Icons.ADD,
-            bgcolor="#2563eb" if can_write else "#475569",
-            color="#ffffff",
+            bgcolor=T.PRIMARY if can_write else T.DISABLED_BG,
+            color=T.ON_ACCENT,
             disabled=not can_write,
             on_click=lambda e: open_service_dialog(),
             height=42,
@@ -328,11 +379,11 @@ class ServicesView:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.MISCELLANEOUS_SERVICES_ROUNDED, size=28, color="#38bdf8"),
+                            ft.Icon(ft.Icons.MISCELLANEOUS_SERVICES_ROUNDED, size=28, color=T.CYAN_TEXT),
                             ft.Column(
                                 controls=[
-                                    ft.Text("Catálogo de Servicios", size=20, weight=ft.FontWeight.BOLD, color="#f8fafc"),
-                                    ft.Text("Administración de servicios ofrecidos y tarifas de facturación", size=12, color="#94a3b8"),
+                                    ft.Text("Catálogo de Servicios", size=20, weight=ft.FontWeight.BOLD, color=T.TEXT),
+                                    ft.Text("Administración de servicios ofrecidos y tarifas de facturación", size=12, color=T.TEXT_MUTED),
                                 ],
                                 spacing=0,
                             ),
@@ -344,9 +395,9 @@ class ServicesView:
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             padding=16,
-            bgcolor="#0f172a",
+            bgcolor=T.SURFACE,
             border_radius=10,
-            border=_all_border(1, "#1e293b"),
+            border=_all_border(1, T.SURFACE_ALT),
         )
 
         main_content = ft.Column(

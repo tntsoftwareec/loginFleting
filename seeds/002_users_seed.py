@@ -1,8 +1,8 @@
 """
 Seed: 002_users_seed.py
-Seeds users using Faker (es_ES) and hashed passwords.
+Seeds users using Faker (es_ES) and bcrypt-hashed passwords.
 """
-import hashlib
+import bcrypt
 import random
 import re
 from faker import Faker
@@ -39,10 +39,10 @@ def run(db):
     admin_role_id = role_map.get("Admin", role_ids[0])
     cajero_role_id = role_map.get("Cajero", role_ids[0])
 
-    # Core default users
-    admin_pass = hashlib.sha256("admin123".encode("utf-8")).hexdigest()
-    cajero_pass = hashlib.sha256("cajero123".encode("utf-8")).hexdigest()
-    default_pass = hashlib.sha256("password123".encode("utf-8")).hexdigest()
+    # Core default users (bcrypt hashed)
+    admin_pass = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode("utf-8")
+    cajero_pass = bcrypt.hashpw(b"cajero123", bcrypt.gensalt()).decode("utf-8")
+    default_pass = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode("utf-8")
 
     default_users = [
         ("Administrador Sistema", "admin@pos.com", admin_pass, admin_role_id, "active"),

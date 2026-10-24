@@ -1,4 +1,5 @@
 import flet as ft
+from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.user_controller import UserController
 from app.controllers.role_controller import RoleController
@@ -23,9 +24,9 @@ class UsersView:
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Icon(ft.Icons.LOCK_OUTLINED, color="#ef4444", size=64),
-                        ft.Text("Acceso Restringido", color="#f8fafc", size=22, weight=ft.FontWeight.BOLD),
-                        ft.Text("Tu rol actual no posee permisos de lectura (can_read) para acceder a este módulo.", color="#94a3b8", size=14, text_align=ft.TextAlign.CENTER),
+                        ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
+                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Tu rol actual no posee permisos de lectura (can_read) para acceder a este módulo.", color=T.TEXT_MUTED, size=14, text_align=ft.TextAlign.CENTER),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -61,13 +62,17 @@ class UsersView:
             self.page.update()
 
         def show_toast(message: str, is_error: bool = False):
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text(message, color="#ffffff"),
-                bgcolor="#ef4444" if is_error else "#10b981",
-                duration=3000
+            snack = ft.SnackBar(
+                content=ft.Text(message, color=T.ON_ACCENT),
+                bgcolor=T.DANGER if is_error else T.SUCCESS,
+                duration=3000,
             )
-            self.page.snack_bar.open = True
-            self.page.update()
+            if hasattr(self.page, "show_dialog"):
+                self.page.show_dialog(snack)
+            else:
+                self.page.overlay.append(snack)
+                snack.open = True
+                self.page.update()
 
         def load_data():
             self.users_list = UserController.get_all()
@@ -81,11 +86,11 @@ class UsersView:
         def get_role_badge_style(role_name: str):
             r_lower = role_name.lower()
             if "admin" in r_lower:
-                return {"bg": "#3730a322", "fg": "#818cf8", "icon": ft.Icons.ADMIN_PANEL_SETTINGS_ROUNDED}
+                return {"bg": T.PURPLE_BG, "fg": T.INDIGO_TEXT, "icon": ft.Icons.ADMIN_PANEL_SETTINGS_ROUNDED}
             elif "cajero" in r_lower:
-                return {"bg": "#065f4622", "fg": "#34d399", "icon": ft.Icons.POINT_OF_SALE_ROUNDED}
+                return {"bg": T.SUCCESS_BG_SOFT, "fg": T.SUCCESS_TEXT, "icon": ft.Icons.POINT_OF_SALE_ROUNDED}
             else:
-                return {"bg": "#78350f22", "fg": "#fbbf24", "icon": ft.Icons.PERSON_ROUNDED}
+                return {"bg": T.WARNING_BG_SOFT, "fg": T.WARNING, "icon": ft.Icons.PERSON_ROUNDED}
 
         def render_users():
             self.users_container.controls.clear()
@@ -111,8 +116,8 @@ class UsersView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.PERSON_OFF_ROUNDED, color="#64748b", size=48),
-                                ft.Text("No se encontraron usuarios", color="#94a3b8", size=16),
+                                ft.Icon(ft.Icons.PERSON_OFF_ROUNDED, color=T.TEXT_SUBTLE, size=48),
+                                ft.Text("No se encontraron usuarios", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=8,
@@ -142,15 +147,15 @@ class UsersView:
                                 width=8,
                                 height=8,
                                 border_radius=4,
-                                bgcolor="#10b981" if is_active else "#94a3b8",
+                                bgcolor=T.SUCCESS if is_active else T.TEXT_MUTED,
                             ),
-                            ft.Text("Activo" if is_active else "Inactivo", color="#10b981" if is_active else "#94a3b8", size=12, weight=ft.FontWeight.W_500),
+                            ft.Text("Activo" if is_active else "Inactivo", color=T.SUCCESS if is_active else T.TEXT_MUTED, size=12, weight=ft.FontWeight.W_500),
                         ],
                         spacing=6,
                     ),
                     padding=ft.Padding.symmetric(horizontal=10, vertical=4),
                     border_radius=20,
-                    bgcolor="#10b98115" if is_active else "#64748b15",
+                    bgcolor=T.SUCCESS_BG_SOFT if is_active else T.MUTED_BG,
                 )
 
                 role_badge = ft.Container(
@@ -168,12 +173,12 @@ class UsersView:
 
                 initial = name[0].upper() if name else "U"
                 avatar = ft.Container(
-                    content=ft.Text(initial, color="#ffffff", size=16, weight=ft.FontWeight.BOLD),
+                    content=ft.Text(initial, color=T.ON_ACCENT, size=16, weight=ft.FontWeight.BOLD),
                     width=42,
                     height=42,
                     border_radius=21,
                     gradient=ft.LinearGradient(
-                        colors=["#6366f1", "#4338ca"],
+                        colors=[T.INDIGO, T.INDIGO_DARK],
                         begin=ft.Alignment(-1, -1),
                         end=ft.Alignment(1, 1),
                     ),
@@ -185,7 +190,7 @@ class UsersView:
                     user_action_btns.append(
                         ft.IconButton(
                             icon=ft.Icons.EDIT_OUTLINED,
-                            icon_color="#818cf8",
+                            icon_color=T.INDIGO_TEXT,
                             tooltip="Editar usuario",
                             on_click=lambda e, u=user: open_user_dialog(u),
                         )
@@ -194,7 +199,7 @@ class UsersView:
                     user_action_btns.append(
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINE_ROUNDED,
-                            icon_color="#f87171",
+                            icon_color=T.DANGER_TEXT,
                             tooltip="Eliminar usuario",
                             on_click=lambda e, u=user: confirm_delete_dialog(u),
                         )
@@ -206,8 +211,8 @@ class UsersView:
                             avatar,
                             ft.Column(
                                 controls=[
-                                    ft.Text(name, color="#f8fafc", size=15, weight=ft.FontWeight.BOLD),
-                                    ft.Text(email, color="#94a3b8", size=12),
+                                    ft.Text(name, color=T.TEXT, size=15, weight=ft.FontWeight.BOLD),
+                                    ft.Text(email, color=T.TEXT_MUTED, size=12),
                                 ],
                                 expand=True,
                                 spacing=2,
@@ -223,8 +228,8 @@ class UsersView:
                     ),
                     padding=14,
                     border_radius=12,
-                    bgcolor="#1e293b",
-                    border=_all_border(1, "#334155"),
+                    bgcolor=T.SURFACE_ALT,
+                    border=_all_border(1, T.BORDER_STRONG),
                 )
                 rows.append(row_card)
 
@@ -241,11 +246,11 @@ class UsersView:
                 value=user["name"] if is_edit else "",
                 hint_text="Ej: Juan Pérez",
                 prefix_icon=ft.Icons.PERSON_OUTLINED,
-                bgcolor="#0f172a",
-                border_color="#334155",
-                focused_border_color="#6366f1",
-                color="#f8fafc",
-                label_style=ft.TextStyle(color="#94a3b8"),
+                bgcolor=T.SURFACE,
+                border_color=T.BORDER_STRONG,
+                focused_border_color=T.INDIGO,
+                color=T.TEXT,
+                label_style=ft.TextStyle(color=T.TEXT_MUTED),
                 border_radius=10,
             )
 
@@ -254,11 +259,11 @@ class UsersView:
                 value=user["email"] if is_edit else "",
                 hint_text="usuario@ejemplo.com",
                 prefix_icon=ft.Icons.EMAIL_OUTLINED,
-                bgcolor="#0f172a",
-                border_color="#334155",
-                focused_border_color="#6366f1",
-                color="#f8fafc",
-                label_style=ft.TextStyle(color="#94a3b8"),
+                bgcolor=T.SURFACE,
+                border_color=T.BORDER_STRONG,
+                focused_border_color=T.INDIGO,
+                color=T.TEXT,
+                label_style=ft.TextStyle(color=T.TEXT_MUTED),
                 border_radius=10,
             )
 
@@ -268,11 +273,11 @@ class UsersView:
                 prefix_icon=ft.Icons.LOCK_OUTLINED,
                 password=True,
                 can_reveal_password=True,
-                bgcolor="#0f172a",
-                border_color="#334155",
-                focused_border_color="#6366f1",
-                color="#f8fafc",
-                label_style=ft.TextStyle(color="#94a3b8"),
+                bgcolor=T.SURFACE,
+                border_color=T.BORDER_STRONG,
+                focused_border_color=T.INDIGO,
+                color=T.TEXT,
+                label_style=ft.TextStyle(color=T.TEXT_MUTED),
                 border_radius=10,
             )
 
@@ -287,11 +292,11 @@ class UsersView:
                 label="Rol",
                 options=role_options,
                 value=initial_role_key,
-                bgcolor="#0f172a",
-                border_color="#334155",
-                focused_border_color="#6366f1",
-                color="#f8fafc",
-                label_style=ft.TextStyle(color="#94a3b8"),
+                bgcolor=T.SURFACE,
+                border_color=T.BORDER_STRONG,
+                focused_border_color=T.INDIGO,
+                color=T.TEXT,
+                label_style=ft.TextStyle(color=T.TEXT_MUTED),
                 border_radius=10,
             )
 
@@ -302,15 +307,15 @@ class UsersView:
                     ft.dropdown.Option(key="inactive", text="Inactivo"),
                 ],
                 value=user.get("status", "active") if is_edit else "active",
-                bgcolor="#0f172a",
-                border_color="#334155",
-                focused_border_color="#6366f1",
-                color="#f8fafc",
-                label_style=ft.TextStyle(color="#94a3b8"),
+                bgcolor=T.SURFACE,
+                border_color=T.BORDER_STRONG,
+                focused_border_color=T.INDIGO,
+                color=T.TEXT,
+                label_style=ft.TextStyle(color=T.TEXT_MUTED),
                 border_radius=10,
             )
 
-            error_msg = ft.Text("", color="#ef4444", size=12, visible=False)
+            error_msg = ft.Text("", color=T.DANGER, size=12, visible=False)
 
             def save_user(e):
                 error_msg.visible = False
@@ -354,7 +359,7 @@ class UsersView:
                     self.page.update()
 
             dialog = ft.AlertDialog(
-                title=ft.Text("Editar Usuario" if is_edit else "Nuevo Usuario", color="#f8fafc", weight=ft.FontWeight.BOLD),
+                title=ft.Text("Editar Usuario" if is_edit else "Nuevo Usuario", color=T.TEXT, weight=ft.FontWeight.BOLD),
                 content=ft.Container(
                     content=ft.Column(
                         controls=[
@@ -374,18 +379,18 @@ class UsersView:
                     ft.TextButton(
                         "Cancelar",
                         on_click=lambda e: close_dialog(dialog),
-                        style=ft.ButtonStyle(color="#94a3b8"),
+                        style=ft.ButtonStyle(color=T.TEXT_MUTED),
                     ),
                     ft.FilledButton(
                         "Guardar",
                         on_click=save_user,
                         style=ft.ButtonStyle(
-                            bgcolor="#6366f1",
-                            color="#ffffff",
+                            bgcolor=T.INDIGO,
+                            color=T.ON_ACCENT,
                         ),
                     ),
                 ],
-                bgcolor="#0f172a",
+                bgcolor=T.SURFACE,
                 shape=ft.RoundedRectangleBorder(radius=16),
             )
             show_dialog(dialog)
@@ -407,32 +412,32 @@ class UsersView:
             dialog = ft.AlertDialog(
                 title=ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.WARNING_ROUNDED, color="#f59e0b", size=28),
-                        ft.Text("Confirmar eliminación", color="#f8fafc", weight=ft.FontWeight.BOLD),
+                        ft.Icon(ft.Icons.WARNING_ROUNDED, color=T.AMBER, size=28),
+                        ft.Text("Confirmar eliminación", color=T.TEXT, weight=ft.FontWeight.BOLD),
                     ],
                     spacing=10,
                 ),
                 content=ft.Text(
                     f"¿Estás seguro de que deseas eliminar al usuario '{u_name}'?\nEsta acción no se puede deshacer.",
-                    color="#cbd5e1",
+                    color=T.TEXT_SECONDARY,
                     size=14,
                 ),
                 actions=[
                     ft.TextButton(
                         "Cancelar",
                         on_click=lambda e: close_dialog(dialog),
-                        style=ft.ButtonStyle(color="#94a3b8"),
+                        style=ft.ButtonStyle(color=T.TEXT_MUTED),
                     ),
                     ft.FilledButton(
                         "Eliminar",
                         on_click=do_delete,
                         style=ft.ButtonStyle(
-                            bgcolor="#ef4444",
-                            color="#ffffff",
+                            bgcolor=T.DANGER,
+                            color=T.ON_ACCENT,
                         ),
                     ),
                 ],
-                bgcolor="#0f172a",
+                bgcolor=T.SURFACE,
                 shape=ft.RoundedRectangleBorder(radius=16),
             )
             show_dialog(dialog)
@@ -453,10 +458,10 @@ class UsersView:
         search_input = ft.TextField(
             hint_text="Buscar usuarios por nombre, correo o rol...",
             prefix_icon=ft.Icons.SEARCH,
-            bgcolor="#1e293b",
-            border_color="#334155",
-            focused_border_color="#6366f1",
-            color="#f8fafc",
+            bgcolor=T.SURFACE_ALT,
+            border_color=T.BORDER_STRONG,
+            focused_border_color=T.INDIGO,
+            color=T.TEXT,
             border_radius=12,
             height=46,
             expand=True,
@@ -466,10 +471,10 @@ class UsersView:
         self.role_filter_dropdown = ft.Dropdown(
             value="ALL",
             options=[ft.dropdown.Option("ALL", "Todos los Roles")],
-            bgcolor="#1e293b",
-            border_color="#334155",
-            focused_border_color="#6366f1",
-            color="#f8fafc",
+            bgcolor=T.SURFACE_ALT,
+            border_color=T.BORDER_STRONG,
+            focused_border_color=T.INDIGO,
+            color=T.TEXT,
             border_radius=12,
             height=46,
             width=180,
@@ -483,10 +488,10 @@ class UsersView:
                 ft.dropdown.Option("active", "Activos"),
                 ft.dropdown.Option("inactive", "Inactivos"),
             ],
-            bgcolor="#1e293b",
-            border_color="#334155",
-            focused_border_color="#6366f1",
-            color="#f8fafc",
+            bgcolor=T.SURFACE_ALT,
+            border_color=T.BORDER_STRONG,
+            focused_border_color=T.INDIGO,
+            color=T.TEXT,
             border_radius=12,
             height=46,
             width=170,
@@ -498,8 +503,8 @@ class UsersView:
             icon=ft.Icons.PERSON_ADD_ROUNDED,
             visible=AppState.has_permission("can_write"),
             style=ft.ButtonStyle(
-                bgcolor="#6366f1",
-                color="#ffffff",
+                bgcolor=T.INDIGO,
+                color=T.ON_ACCENT,
                 padding=16,
                 shape=ft.RoundedRectangleBorder(radius=12),
             ),
@@ -511,12 +516,12 @@ class UsersView:
                 ft.Row(
                     controls=[
                         ft.Container(
-                            content=ft.Icon(ft.Icons.SUPERVISED_USER_CIRCLE_ROUNDED, color="#ffffff", size=28),
+                            content=ft.Icon(ft.Icons.SUPERVISED_USER_CIRCLE_ROUNDED, color=T.ON_ACCENT, size=28),
                             width=52,
                             height=52,
                             border_radius=14,
                             gradient=ft.LinearGradient(
-                                colors=["#6366f1", "#4f46e5"],
+                                colors=[T.INDIGO, T.INDIGO_DARK],
                                 begin=ft.Alignment(-1, -1),
                                 end=ft.Alignment(1, 1),
                             ),
@@ -524,8 +529,8 @@ class UsersView:
                         ),
                         ft.Column(
                             controls=[
-                                ft.Text("Gestión de Usuarios", color="#f8fafc", size=24, weight=ft.FontWeight.BOLD),
-                                ft.Text("Administra los usuarios registrados y la asignación de sus roles", color="#64748b", size=13),
+                                ft.Text("Gestión de Usuarios", color=T.TEXT, size=24, weight=ft.FontWeight.BOLD),
+                                ft.Text("Administra los usuarios registrados y la asignación de sus roles", color=T.TEXT_SUBTLE, size=13),
                             ],
                             spacing=2,
                         ),
@@ -550,7 +555,7 @@ class UsersView:
             content=ft.Column(
                 controls=[
                     header,
-                    ft.Divider(color="#1e293b", height=24),
+                    ft.Divider(color=T.SURFACE_ALT, height=24),
                     toolbar,
                     ft.Container(height=8),
                     self.users_container,

@@ -1,0 +1,39 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Entornos virtuales ─────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Secretos / entorno ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Base de datos y logs ───────────────────────────────────
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# ── Build generado (flet build) ────────────────────────────
+build/
+
+# ── Artefactos generados por la app ────────────────────────
+preferences.json
+data/preferences.json
+data/.secret_key
+assets/certs/
+assets/invoices/
+assets/exports/
+assets/quotations/
+assets/products/
+assets/company/

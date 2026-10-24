@@ -1,6 +1,8 @@
 import flet as ft
+from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.supplier_controller import SupplierController
+from app.services.excel_service import ExcelService
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
@@ -19,9 +21,9 @@ class SuppliersView:
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Icon(ft.Icons.LOCK_OUTLINED, color="#ef4444", size=64),
-                        ft.Text("Acceso Restringido", color="#f8fafc", size=22, weight=ft.FontWeight.BOLD),
-                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color="#94a3b8", size=14),
+                        ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
+                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color=T.TEXT_MUTED, size=14),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -56,13 +58,17 @@ class SuppliersView:
             self.page.update()
 
         def show_toast(message: str, is_error: bool = False):
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text(message, color="#ffffff"),
-                bgcolor="#ef4444" if is_error else "#10b981",
-                duration=3000
+            snack = ft.SnackBar(
+                content=ft.Text(message, color=T.ON_ACCENT),
+                bgcolor=T.DANGER if is_error else T.SUCCESS,
+                duration=3000,
             )
-            self.page.snack_bar.open = True
-            self.page.update()
+            if hasattr(self.page, "show_dialog"):
+                self.page.show_dialog(snack)
+            else:
+                self.page.overlay.append(snack)
+                snack.open = True
+                self.page.update()
 
         def load_data():
             self.suppliers_list = SupplierController.get_all()
@@ -89,8 +95,8 @@ class SuppliersView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color="#64748b"),
-                                ft.Text("No se encontraron proveedores", color="#94a3b8", size=16),
+                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.TEXT_SUBTLE),
+                                ft.Text("No se encontraron proveedores", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=10
@@ -109,10 +115,10 @@ class SuppliersView:
                     content=ft.Text(
                         "Activo" if is_active else "Inactivo",
                         size=11,
-                        color="#34d399" if is_active else "#f87171",
+                        color=T.SUCCESS_TEXT if is_active else T.DANGER_TEXT,
                         weight=ft.FontWeight.BOLD,
                     ),
-                    bgcolor="#065f4633" if is_active else "#991b1b33",
+                    bgcolor=T.SUCCESS_BG if is_active else T.DANGER_BG,
                     padding=ft.Padding.symmetric(horizontal=8, vertical=4),
                     border_radius=12,
                 )
@@ -124,14 +130,14 @@ class SuppliersView:
                     controls=[
                         ft.IconButton(
                             icon=ft.Icons.EDIT_OUTLINED,
-                            icon_color="#3b82f6" if can_update else "#64748b",
+                            icon_color=T.INFO if can_update else T.TEXT_SUBTLE,
                             tooltip="Editar proveedor" if can_update else "Sin permiso",
                             disabled=not can_update,
                             on_click=lambda e, supplier=s: open_supplier_dialog(supplier),
                         ),
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINED,
-                            icon_color="#ef4444" if can_delete else "#64748b",
+                            icon_color=T.DANGER if can_delete else T.TEXT_SUBTLE,
                             tooltip="Eliminar proveedor" if can_delete else "Sin permiso",
                             disabled=not can_delete,
                             on_click=lambda e, supplier=s: open_delete_dialog(supplier),
@@ -157,17 +163,17 @@ class SuppliersView:
 
             data_table = ft.DataTable(
                 columns=[
-                    ft.DataColumn(ft.Text("TIPO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("RUC / IDENT", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("RAZÓN SOCIAL", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("CONTACTO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("EMAIL", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("TELÉFONO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color="#94a3b8")),
+                    ft.DataColumn(ft.Text("TIPO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("RUC / IDENT", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("RAZÓN SOCIAL", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("CONTACTO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("EMAIL", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("TELÉFONO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                 ],
                 rows=rows,
-                heading_row_color="#1e293b",
+                heading_row_color=T.SURFACE_ALT,
                 horizontal_margin=15,
                 column_spacing=20,
             )
@@ -175,9 +181,9 @@ class SuppliersView:
             self.suppliers_container.controls.append(
                 ft.Container(
                     content=data_table,
-                    bgcolor="#0f172a",
+                    bgcolor=T.SURFACE,
                     border_radius=10,
-                    border=_all_border(1, "#1e293b"),
+                    border=_all_border(1, T.SURFACE_ALT),
                     padding=10,
                 )
             )
@@ -281,8 +287,8 @@ class SuppliersView:
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
                     ft.FilledButton(
                         "Guardar",
-                        bgcolor="#2563eb",
-                        color="#ffffff",
+                        bgcolor=T.PRIMARY,
+                        color=T.ON_ACCENT,
                         on_click=save_supplier,
                     ),
                 ],
@@ -301,11 +307,11 @@ class SuppliersView:
                     show_toast(msg, is_error=True)
 
             dlg = ft.AlertDialog(
-                title=ft.Text("Confirmar Eliminación", color="#ef4444", weight=ft.FontWeight.BOLD),
+                title=ft.Text("Confirmar Eliminación", color=T.DANGER, weight=ft.FontWeight.BOLD),
                 content=ft.Text(f"¿Estás seguro de eliminar el proveedor '{supplier['razon_social']}'?"),
                 actions=[
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
-                    ft.FilledButton("Eliminar", bgcolor="#ef4444", color="#ffffff", on_click=confirm_delete),
+                    ft.FilledButton("Eliminar", bgcolor=T.DANGER, color=T.ON_ACCENT, on_click=confirm_delete),
                 ],
             )
             show_dialog(dlg)
@@ -328,10 +334,25 @@ class SuppliersView:
         btn_add = ft.FilledButton(
             "Nuevo Proveedor",
             icon=ft.Icons.ADD,
-            bgcolor="#2563eb" if can_write else "#475569",
-            color="#ffffff",
+            bgcolor=T.PRIMARY if can_write else T.DISABLED_BG,
+            color=T.ON_ACCENT,
             disabled=not can_write,
             on_click=lambda e: open_supplier_dialog(),
+            height=42,
+        )
+
+        def export_to_excel(e):
+            try:
+                filepath = ExcelService.export_proveedores(self.suppliers_list)
+                show_toast(f"Proveedores exportados a: {filepath}")
+            except Exception as ex:
+                show_toast(f"Error al exportar: {ex}", is_error=True)
+
+        btn_export = ft.OutlinedButton(
+            "Exportar Excel",
+            icon=ft.Icons.FILE_DOWNLOAD,
+            style=ft.ButtonStyle(color=T.SUCCESS),
+            on_click=export_to_excel,
             height=42,
         )
 
@@ -340,25 +361,25 @@ class SuppliersView:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.LOCAL_SHIPPING_ROUNDED, size=28, color="#10b981"),
+                            ft.Icon(ft.Icons.LOCAL_SHIPPING_ROUNDED, size=28, color=T.SUCCESS),
                             ft.Column(
                                 controls=[
-                                    ft.Text("Gestión de Proveedores", size=20, weight=ft.FontWeight.BOLD, color="#f8fafc"),
-                                    ft.Text("Directorio de distribuidores y empresas proveedoras", size=12, color="#94a3b8"),
+                                    ft.Text("Gestión de Proveedores", size=20, weight=ft.FontWeight.BOLD, color=T.TEXT),
+                                    ft.Text("Directorio de distribuidores y empresas proveedoras", size=12, color=T.TEXT_MUTED),
                                 ],
                                 spacing=0,
                             ),
                         ],
                         spacing=12,
                     ),
-                    ft.Row([search_field, btn_add], spacing=10, width=500),
+                    ft.Row([search_field, btn_add, btn_export], spacing=10, width=620),
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             padding=16,
-            bgcolor="#0f172a",
+            bgcolor=T.SURFACE,
             border_radius=10,
-            border=_all_border(1, "#1e293b"),
+            border=_all_border(1, T.SURFACE_ALT),
         )
 
         main_content = ft.Column(

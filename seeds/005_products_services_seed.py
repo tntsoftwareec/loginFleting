@@ -23,6 +23,34 @@ def run(db):
             """,
             (cod, nom, desc, pre, cos, st, iva, cat)
         )
+        # En una instalación nueva las migraciones corren antes que los seeds,
+        # por lo que el movimiento inicial de estos productos se crea aquí.
+        cursor.execute("SELECT id FROM products WHERE codigo = ?", (cod,))
+        product_row = cursor.fetchone()
+        if product_row and st > 0:
+            cursor.execute(
+                "SELECT COUNT(*) FROM inventory_movements "
+                "WHERE product_id = ? AND tipo = 'INICIAL'",
+                (product_row[0],),
+            )
+            if cursor.fetchone()[0] == 0:
+                cursor.execute(
+                    """
+                    INSERT INTO inventory_movements (
+                        product_id, product_codigo, product_nombre, tipo,
+                        cantidad, stock_anterior, stock_nuevo, motivo, referencia
+                    ) VALUES (?, ?, ?, 'INICIAL', ?, 0, ?, ?, ?)
+                    """,
+                    (
+                        product_row[0],
+                        cod,
+                        nom,
+                        st,
+                        st,
+                        "Stock inicial del producto",
+                        "Seed de productos",
+                    ),
+                )
 
     default_services = [
         ("SERV-001", "Mantenimiento Preventivo de Equipos", "Limpieza física, cambio de pasta térmica y revisión de hardware", 35.00, 15.0, "Mantenimiento"),

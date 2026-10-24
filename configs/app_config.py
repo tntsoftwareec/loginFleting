@@ -1,6 +1,5 @@
 
 # configs/app_config.py
-import flet as ft
 
 class ScreenConfig:
     MOBILE = {
@@ -22,6 +21,8 @@ class ScreenConfig:
     }
 
 class AppConfig:
-    APP_NAME = "{project_name}"
+    APP_NAME = "TntPos"
     DEFAULT_SCREEN = ScreenConfig.MOBILE
-    THEME_MODE = ft.ThemeMode.DARK
+    # Tema inicial cuando el usuario aún no ha guardado una preferencia:
+    # "light", "dark" o "system" (sigue el brillo del sistema operativo).
+    DEFAULT_THEME_MODE = "system"

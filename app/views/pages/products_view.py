@@ -1,17 +1,60 @@
+import os
+import tempfile
+
 import flet as ft
+from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.product_controller import ProductController
+from app.controllers.supplier_controller import SupplierController
+from app.views.components.import_export import build_import_export_bar
+from app.views.ui_helpers import get_file_picker, is_mobile_page
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
     side = ft.BorderSide(width, color)
     return ft.Border(top=side, right=side, bottom=side, left=side)
 
+
+def _product_thumbnail(product: dict, size: int = 40):
+    """Miniatura para el listado, o icono si el producto no tiene imagen."""
+    path = str(product.get("imagen_path") or "").strip()
+    if path and os.path.isfile(path):
+        return ft.Container(
+            content=ft.Image(
+                src=path,
+                width=size,
+                height=size,
+                fit=ft.BoxFit.COVER,
+                border_radius=6,
+                error_content=ft.Icon(
+                    ft.Icons.BROKEN_IMAGE_OUTLINED,
+                    size=max(14, int(size * 0.45)),
+                    color=T.TEXT_SUBTLE,
+                ),
+            ),
+            width=size,
+            height=size,
+            border_radius=6,
+        )
+    return ft.Container(
+        content=ft.Icon(
+            ft.Icons.IMAGE_NOT_SUPPORTED_OUTLINED,
+            size=max(16, int(size * 0.5)),
+            color=T.TEXT_SUBTLE,
+        ),
+        width=size,
+        height=size,
+        bgcolor=T.SURFACE_ALT,
+        border_radius=6,
+        alignment=ft.Alignment(0, 0),
+    )
+
 class ProductsView:
     def __init__(self, page: ft.Page, router):
         self.page = page
         self.router = router
         self.products_list = []
+        self.suppliers_list = []
         self.search_query = ""
 
     def render(self):
@@ -19,9 +62,9 @@ class ProductsView:
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Icon(ft.Icons.LOCK_OUTLINED, color="#ef4444", size=64),
-                        ft.Text("Acceso Restringido", color="#f8fafc", size=22, weight=ft.FontWeight.BOLD),
-                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color="#94a3b8", size=14),
+                        ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
+                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("No tienes permisos suficientes para acceder a este módulo.", color=T.TEXT_MUTED, size=14),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -56,29 +99,43 @@ class ProductsView:
             self.page.update()
 
         def show_toast(message: str, is_error: bool = False):
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text(message, color="#ffffff"),
-                bgcolor="#ef4444" if is_error else "#10b981",
-                duration=3000
+            snack = ft.SnackBar(
+                content=ft.Text(message, color=T.ON_ACCENT),
+                bgcolor=T.DANGER if is_error else T.SUCCESS,
+                duration=3000,
             )
-            self.page.snack_bar.open = True
-            self.page.update()
+            if hasattr(self.page, "show_dialog"):
+                self.page.show_dialog(snack)
+            else:
+                self.page.overlay.append(snack)
+                snack.open = True
+                self.page.update()
 
         def load_data():
             self.products_list = ProductController.get_all()
+            self.suppliers_list = SupplierController.get_all()
             render_products()
 
         def render_products():
             self.products_container.controls.clear()
 
+            suppliers_by_id = {
+                int(s["id"]): s.get("razon_social") or ""
+                for s in self.suppliers_list
+            }
+
             filtered = []
             for p in self.products_list:
                 q = self.search_query.lower()
+                supplier_name = suppliers_by_id.get(
+                    int(p.get("supplier_id") or 0), ""
+                )
                 matches = (
                     not q or
                     q in p["codigo"].lower() or
                     q in p["nombre"].lower() or
-                    q in (p.get("categoria") or "").lower()
+                    q in (p.get("categoria") or "").lower() or
+                    q in supplier_name.lower()
                 )
                 if matches:
                     filtered.append(p)
@@ -88,8 +145,8 @@ class ProductsView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color="#64748b"),
-                                ft.Text("No se encontraron productos", color="#94a3b8", size=16),
+                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.TEXT_SUBTLE),
+                                ft.Text("No se encontraron productos", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=10
@@ -102,17 +159,22 @@ class ProductsView:
                 return
 
             rows = []
+            cards = []
             for p in filtered:
                 stk = int(p.get("stock", 0))
-                if stk <= 5:
-                    stock_color = "#f87171"
-                    stock_bg = "#991b1b33"
-                elif stk <= 15:
-                    stock_color = "#fbbf24"
-                    stock_bg = "#78350f33"
+                min_stock = int(p.get("stock_minimo", 5) or 0)
+                supplier_name = suppliers_by_id.get(
+                    int(p.get("supplier_id") or 0), ""
+                ) or "Sin proveedor"
+                if stk <= 0:
+                    stock_color = T.DANGER_TEXT
+                    stock_bg = T.DANGER_BG
+                elif stk <= min_stock:
+                    stock_color = T.WARNING
+                    stock_bg = T.WARNING_BG
                 else:
-                    stock_color = "#34d399"
-                    stock_bg = "#065f4633"
+                    stock_color = T.SUCCESS_TEXT
+                    stock_bg = T.SUCCESS_BG
 
                 stock_chip = ft.Container(
                     content=ft.Text(
@@ -133,14 +195,14 @@ class ProductsView:
                     controls=[
                         ft.IconButton(
                             icon=ft.Icons.EDIT_OUTLINED,
-                            icon_color="#3b82f6" if can_update else "#64748b",
+                            icon_color=T.INFO if can_update else T.TEXT_SUBTLE,
                             tooltip="Editar producto" if can_update else "Sin permiso",
                             disabled=not can_update,
                             on_click=lambda e, prod=p: open_product_dialog(prod),
                         ),
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINED,
-                            icon_color="#ef4444" if can_delete else "#64748b",
+                            icon_color=T.DANGER if can_delete else T.TEXT_SUBTLE,
                             tooltip="Eliminar producto" if can_delete else "Sin permiso",
                             disabled=not can_delete,
                             on_click=lambda e, prod=p: open_delete_dialog(prod),
@@ -152,11 +214,21 @@ class ProductsView:
                 rows.append(
                     ft.DataRow(
                         cells=[
-                            ft.DataCell(ft.Text(p["codigo"], size=12, weight=ft.FontWeight.BOLD, color="#60a5fa")),
-                            ft.DataCell(ft.Text(p["nombre"], size=13, weight=ft.FontWeight.W_500)),
+                            ft.DataCell(ft.Text(p["codigo"], size=12, weight=ft.FontWeight.BOLD, color=T.INFO_TEXT)),
+                            ft.DataCell(
+                                ft.Row(
+                                    controls=[
+                                        _product_thumbnail(p, 34),
+                                        ft.Text(p["nombre"], size=13, weight=ft.FontWeight.W_500),
+                                    ],
+                                    spacing=8,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                )
+                            ),
                             ft.DataCell(ft.Text(p.get("categoria") or "General", size=12)),
-                            ft.DataCell(ft.Text(f"${float(p['precio']):.2f}", size=13, weight=ft.FontWeight.BOLD, color="#34d399")),
-                            ft.DataCell(ft.Text(f"${float(p.get('costo', 0.0)):.2f}", size=12, color="#94a3b8")),
+                            ft.DataCell(ft.Text(supplier_name, size=12, color=T.TEXT_MUTED)),
+                            ft.DataCell(ft.Text(f"${float(p['precio']):.2f}", size=13, weight=ft.FontWeight.BOLD, color=T.SUCCESS_TEXT)),
+                            ft.DataCell(ft.Text(f"${float(p.get('costo', 0.0)):.2f}", size=12, color=T.TEXT_MUTED)),
                             ft.DataCell(stock_chip),
                             ft.DataCell(ft.Text(f"{float(p.get('iva_porcentaje', 15.0)):.0f}%", size=12)),
                             ft.DataCell(actions),
@@ -164,32 +236,77 @@ class ProductsView:
                     )
                 )
 
-            data_table = ft.DataTable(
-                columns=[
-                    ft.DataColumn(ft.Text("CÓDIGO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("NOMBRE PRODUCTO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("CATEGORÍA", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("PRECIO VENTA", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("COSTO", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("STOCK", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                    ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color="#94a3b8")),
-                ],
-                rows=rows,
-                heading_row_color="#1e293b",
-                horizontal_margin=15,
-                column_spacing=20,
-            )
-
-            self.products_container.controls.append(
-                ft.Container(
-                    content=data_table,
-                    bgcolor="#0f172a",
-                    border_radius=10,
-                    border=_all_border(1, "#1e293b"),
-                    padding=10,
+                cards.append(
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        _product_thumbnail(p, 44),
+                                        ft.Column(
+                                            controls=[
+                                                ft.Text(p["nombre"], size=15, weight=ft.FontWeight.BOLD, color=T.TEXT),
+                                                ft.Text(f'{p["codigo"]} · {p.get("categoria") or "General"}', size=11, color=T.TEXT_MUTED),
+                                                ft.Text(f"Proveedor: {supplier_name}", size=11, color=T.TEXT_SECONDARY),
+                                            ],
+                                            spacing=2,
+                                            expand=True,
+                                        ),
+                                        stock_chip,
+                                    ],
+                                    vertical_alignment=ft.CrossAxisAlignment.START,
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.Text(f"Venta: ${float(p['precio']):.2f}", size=13, weight=ft.FontWeight.BOLD, color=T.SUCCESS_TEXT),
+                                        ft.Text(f"Costo: ${float(p.get('costo', 0.0)):.2f}", size=12, color=T.TEXT_MUTED),
+                                        ft.Text(f"IVA {float(p.get('iva_porcentaje', 15.0)):.0f}%", size=12, color=T.TEXT_SECONDARY),
+                                    ],
+                                    spacing=12,
+                                ),
+                                ft.Row([actions], alignment=ft.MainAxisAlignment.END),
+                            ],
+                            spacing=8,
+                        ),
+                        padding=14,
+                        bgcolor=T.SURFACE,
+                        border_radius=10,
+                        border=_all_border(1, T.SURFACE_ALT),
+                    )
                 )
-            )
+
+            if is_mobile_page(self.page):
+                self.products_container.controls.append(
+                    ft.Column(controls=cards, spacing=10)
+                )
+            else:
+                data_table = ft.DataTable(
+                    columns=[
+                        ft.DataColumn(ft.Text("CÓDIGO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("NOMBRE PRODUCTO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("CATEGORÍA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("PROVEEDOR", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("PRECIO VENTA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("COSTO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("STOCK", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ],
+                    rows=rows,
+                    heading_row_color=T.SURFACE_ALT,
+                    horizontal_margin=15,
+                    column_spacing=20,
+                )
+
+                self.products_container.controls.append(
+                    ft.Container(
+                        content=data_table,
+                        bgcolor=T.SURFACE,
+                        border_radius=10,
+                        border=_all_border(1, T.SURFACE_ALT),
+                        padding=10,
+                    )
+                )
             self.page.update()
 
         def open_product_dialog(prod=None):
@@ -203,6 +320,24 @@ class ProductsView:
             tf_nom = ft.TextField(
                 label="Nombre del Producto",
                 value=prod["nombre"] if is_edit else "",
+                expand=True,
+            )
+            suppliers = self.suppliers_list or SupplierController.get_all()
+            supplier_options = [ft.dropdown.Option("0", "Sin proveedor")]
+            supplier_options.extend(
+                ft.dropdown.Option(str(s["id"]), s.get("razon_social") or "")
+                for s in suppliers
+            )
+            current_supplier = (
+                str(prod.get("supplier_id") or "0") if is_edit else "0"
+            )
+            valid_supplier_keys = {"0"} | {str(s["id"]) for s in suppliers}
+            if current_supplier not in valid_supplier_keys:
+                current_supplier = "0"
+            dd_supplier = ft.Dropdown(
+                label="Proveedor",
+                value=current_supplier,
+                options=supplier_options,
                 expand=True,
             )
             tf_cat = ft.TextField(
@@ -223,6 +358,14 @@ class ProductsView:
             tf_stk = ft.TextField(
                 label="Stock Disponible",
                 value=str(prod.get("stock", 0)) if is_edit else "10",
+                expand=True,
+            )
+            tf_min = ft.TextField(
+                label="Stock Mínimo",
+                value=str(
+                    prod.get("stock_minimo")
+                    if prod.get("stock_minimo") is not None else 5
+                ) if is_edit else "5",
                 expand=True,
             )
             tf_iva = ft.Dropdown(
@@ -246,6 +389,96 @@ class ProductsView:
                 value=(prod.get("status", "active") == "active") if is_edit else True,
             )
 
+            selected_image = {
+                "path": str(prod.get("imagen_path") or "").strip() if is_edit else ""
+            }
+            image_preview_container = ft.Container(
+                width=100,
+                height=100,
+                bgcolor=T.SURFACE_ALT,
+                border_radius=8,
+                alignment=ft.Alignment(0, 0),
+            )
+
+            def render_image_preview():
+                path = selected_image["path"]
+                if path and os.path.isfile(path):
+                    image_preview_container.content = ft.Image(
+                        src=path,
+                        width=100,
+                        height=100,
+                        fit=ft.BoxFit.CONTAIN,
+                        border_radius=8,
+                        error_content=ft.Icon(
+                            ft.Icons.BROKEN_IMAGE_OUTLINED,
+                            size=30,
+                            color=T.TEXT_SUBTLE,
+                        ),
+                    )
+                else:
+                    image_preview_container.content = ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ADD_PHOTO_ALTERNATE_OUTLINED, size=30, color=T.TEXT_SUBTLE),
+                            ft.Text("Sin imagen", size=10, color=T.TEXT_MUTED),
+                        ],
+                        spacing=2,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    )
+
+            picker = get_file_picker(self.page)
+
+            def pick_product_image(e):
+                async def run():
+                    try:
+                        files = await picker.pick_files(
+                            dialog_title="Seleccionar imagen del producto",
+                            file_type=ft.FilePickerFileType.CUSTOM,
+                            allowed_extensions=["jpg", "jpeg", "png", "webp"],
+                            allow_multiple=False,
+                            with_data=True,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        show_toast(
+                            f"No se pudo abrir el selector de imágenes: {exc}",
+                            is_error=True,
+                        )
+                        return
+
+                    if not files:
+                        return
+
+                    chosen = files[0]
+                    path = chosen.path
+
+                    # Web/móvil pueden entregar solo los bytes; se guardan en
+                    # un temporal para que el controlador pueda copiarlos.
+                    if not path and chosen.bytes:
+                        suffix = os.path.splitext(chosen.name or "")[1].lower() or ".jpg"
+                        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                        tmp.write(chosen.bytes)
+                        tmp.close()
+                        path = tmp.name
+
+                    if not path:
+                        show_toast(
+                            "No se pudo leer la imagen seleccionada. Intenta de nuevo.",
+                            is_error=True,
+                        )
+                        return
+
+                    selected_image["path"] = path
+                    render_image_preview()
+                    self.page.update()
+                    show_toast(f"Imagen seleccionada: {chosen.name or os.path.basename(path)}")
+
+                self.page.run_task(run)
+
+            def clear_product_image(e):
+                selected_image["path"] = ""
+                render_image_preview()
+                self.page.update()
+
             def save_product(e):
                 cod = tf_cod.value
                 nom = tf_nom.value
@@ -253,17 +486,29 @@ class ProductsView:
                 precio = tf_prec.value
                 costo = tf_cost.value
                 stock = tf_stk.value
+                stock_minimo = tf_min.value
                 iva = tf_iva.value
                 desc = tf_desc.value
                 status = "active" if sw_status.value else "inactive"
+                supplier_id = dd_supplier.value
 
                 if is_edit:
+                    current_image = str(prod.get("imagen_path") or "").strip()
+                    chosen_image = selected_image["path"]
+                    # None conserva la imagen actual; "" la elimina.
+                    image_arg = None if chosen_image == current_image else chosen_image
                     success, res = ProductController.update(
-                        prod["id"], cod, nom, desc, precio, costo, stock, iva, cat, status
+                        prod["id"], cod, nom, desc, precio, costo, stock, iva, cat, status,
+                        imagen_path=image_arg,
+                        stock_minimo=stock_minimo,
+                        supplier_id=supplier_id,
                     )
                 else:
                     success, res = ProductController.create(
-                        cod, nom, desc, precio, costo, stock, iva, cat, status
+                        cod, nom, desc, precio, costo, stock, iva, cat, status,
+                        imagen_path=selected_image["path"],
+                        stock_minimo=stock_minimo,
+                        supplier_id=supplier_id,
                     )
 
                 if success:
@@ -273,16 +518,57 @@ class ProductsView:
                 else:
                     show_toast(res, is_error=True)
 
+            render_image_preview()
+
             dlg = ft.AlertDialog(
                 title=ft.Text("Editar Producto" if is_edit else "Nuevo Producto", weight=ft.FontWeight.BOLD),
                 content=ft.Container(
                     content=ft.Column(
                         controls=[
                             ft.Row([tf_cod, tf_cat], spacing=10),
-                            tf_nom,
+                            ft.Row([tf_nom, dd_supplier], spacing=10),
                             ft.Row([tf_prec, tf_cost], spacing=10),
-                            ft.Row([tf_stk, tf_iva], spacing=10),
+                            ft.Row([tf_stk, tf_min, tf_iva], spacing=10),
                             tf_desc,
+                            ft.Row(
+                                controls=[
+                                    image_preview_container,
+                                    ft.Column(
+                                        controls=[
+                                            ft.Text(
+                                                "Imagen del producto",
+                                                size=12,
+                                                weight=ft.FontWeight.BOLD,
+                                                color=T.TEXT_MUTED,
+                                            ),
+                                            ft.Text(
+                                                "JPG, PNG o WEBP. Se usa en el PDF de las cotizaciones.",
+                                                size=10,
+                                                color=T.TEXT_MUTED,
+                                            ),
+                                            ft.Row(
+                                                controls=[
+                                                    ft.OutlinedButton(
+                                                        "Seleccionar",
+                                                        icon=ft.Icons.UPLOAD_FILE_ROUNDED,
+                                                        on_click=pick_product_image,
+                                                    ),
+                                                    ft.TextButton(
+                                                        "Quitar",
+                                                        icon=ft.Icons.DELETE_OUTLINE_ROUNDED,
+                                                        on_click=clear_product_image,
+                                                    ),
+                                                ],
+                                                spacing=4,
+                                            ),
+                                        ],
+                                        spacing=6,
+                                        expand=True,
+                                    ),
+                                ],
+                                spacing=12,
+                                vertical_alignment=ft.CrossAxisAlignment.START,
+                            ),
                             sw_status,
                         ],
                         tight=True,
@@ -294,8 +580,8 @@ class ProductsView:
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
                     ft.FilledButton(
                         "Guardar",
-                        bgcolor="#2563eb",
-                        color="#ffffff",
+                        bgcolor=T.PRIMARY,
+                        color=T.ON_ACCENT,
                         on_click=save_product,
                     ),
                 ],
@@ -314,11 +600,11 @@ class ProductsView:
                     show_toast(msg, is_error=True)
 
             dlg = ft.AlertDialog(
-                title=ft.Text("Confirmar Eliminación", color="#ef4444", weight=ft.FontWeight.BOLD),
+                title=ft.Text("Confirmar Eliminación", color=T.DANGER, weight=ft.FontWeight.BOLD),
                 content=ft.Text(f"¿Estás seguro de eliminar el producto '{prod['nombre']}'?"),
                 actions=[
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
-                    ft.FilledButton("Eliminar", bgcolor="#ef4444", color="#ffffff", on_click=confirm_delete),
+                    ft.FilledButton("Eliminar", bgcolor=T.DANGER, color=T.ON_ACCENT, on_click=confirm_delete),
                 ],
             )
             show_dialog(dlg)
@@ -332,46 +618,55 @@ class ProductsView:
             prefix_icon=ft.Icons.SEARCH,
             on_change=on_search_change,
             height=42,
+            width=260,
             text_size=14,
             content_padding=ft.Padding.symmetric(horizontal=10, vertical=0),
-            expand=True,
         )
 
         can_write = AppState.has_permission("can_write")
         btn_add = ft.FilledButton(
             "Nuevo Producto",
             icon=ft.Icons.ADD,
-            bgcolor="#2563eb" if can_write else "#475569",
-            color="#ffffff",
+            bgcolor=T.PRIMARY if can_write else T.DISABLED_BG,
+            color=T.ON_ACCENT,
             disabled=not can_write,
             on_click=lambda e: open_product_dialog(),
             height=42,
         )
 
+        import_export_bar = build_import_export_bar(self.page, kind="products", on_changed=load_data)
+
         header_card = ft.Container(
-            content=ft.Row(
+            content=ft.Column(
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.INVENTORY_2_ROUNDED, size=28, color="#a855f7"),
+                            ft.Icon(ft.Icons.INVENTORY_2_ROUNDED, size=28, color=T.PURPLE),
                             ft.Column(
                                 controls=[
-                                    ft.Text("Catálogo de Productos", size=20, weight=ft.FontWeight.BOLD, color="#f8fafc"),
-                                    ft.Text("Inventario de mercancías, precios y control de stock", size=12, color="#94a3b8"),
+                                    ft.Text("Catálogo de Productos", size=20, weight=ft.FontWeight.BOLD, color=T.TEXT),
+                                    ft.Text("Inventario de mercancías, precios y control de stock", size=12, color=T.TEXT_MUTED),
                                 ],
                                 spacing=0,
+                                expand=True,
                             ),
                         ],
                         spacing=12,
                     ),
-                    ft.Row([search_field, btn_add], spacing=10, width=500),
+                    ft.Row(
+                        controls=[search_field, btn_add, import_export_bar],
+                        spacing=10,
+                        wrap=True,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
                 ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                spacing=12,
+                tight=True,
             ),
             padding=16,
-            bgcolor="#0f172a",
+            bgcolor=T.SURFACE,
             border_radius=10,
-            border=_all_border(1, "#1e293b"),
+            border=_all_border(1, T.SURFACE_ALT),
         )
 
         main_content = ft.Column(

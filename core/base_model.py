@@ -1,21 +1,28 @@
-
 # core/base_model.py
-from core.database import get_connection
+from core.database import commit, get_connection
 from core.orm import ForeignKey, HasMany
 from typing import Any
+
 
 class QuerySet:
 
     def __init__(self, model, relations=None):
         self.model = model
         self.relations = relations or []
-    
+
     def _cursor(self):
+        # No se toca conn.row_factory: las filas se convierten a dict aquí,
+        # evitando que el estado compartido de la conexión afecte a otros
+        # consumidores (migraciones/seeds usan tuplas).
         conn = get_connection()
-        conn.row_factory = lambda c, r: dict(
-            zip([col[0] for col in c.description], r)
-        )
         return conn, conn.cursor()
+
+    @staticmethod
+    def _to_dicts(cursor, rows):
+        if not rows:
+            return []
+        cols = [c[0] for c in cursor.description]
+        return [dict(zip(cols, row)) for row in rows]
 
     def all(self):
         conn, cursor = self._cursor()
@@ -23,19 +30,19 @@ class QuerySet:
         cursor.execute(
             f"SELECT * FROM {self.model.table_name}"
         )
-        rows = cursor.fetchall()
+        rows = self._to_dicts(cursor, cursor.fetchall())
 
         return self._attach_relations(cursor, rows)
-    
+
     def first(self):
         conn, cursor = self._cursor()
         cursor.execute(
             f"SELECT * FROM {self.model.table_name} LIMIT 1"
         )
-        row = cursor.fetchone()
-        if not row:
+        rows = self._to_dicts(cursor, cursor.fetchall())
+        if not rows:
             return None
-        return self._attach_relations(cursor, [row])[0]
+        return self._attach_relations(cursor, rows)[0]
 
     def find(self, id):
         conn, cursor = self._cursor()
@@ -44,12 +51,12 @@ class QuerySet:
             f"SELECT * FROM {self.model.table_name} WHERE id = ?",
             (id,)
         )
-        row = cursor.fetchone()
+        rows = self._to_dicts(cursor, cursor.fetchall())
 
-        if not row:
+        if not rows:
             return None
 
-        return self._attach_relations(cursor, [row])[0]
+        return self._attach_relations(cursor, rows)[0]
 
     def where(self, **filters):
         conn, cursor = self._cursor()
@@ -63,19 +70,20 @@ class QuerySet:
             values
         )
 
-        rows = cursor.fetchall()
+        rows = self._to_dicts(cursor, cursor.fetchall())
         return self._attach_relations(cursor, rows)
-    
+
     def count(self):
         conn, cursor = self._cursor()
         cursor.execute(
             f"SELECT COUNT(*) as total FROM {self.model.table_name}"
         )
-        return cursor.fetchone()["total"]
-    
+        rows = self._to_dicts(cursor, cursor.fetchall())
+        return rows[0]["total"] if rows else 0
+
     def exists(self, **filters):
         return len(self.where(**filters)) > 0
-    
+
     # =========================
     # Relations
     # =========================
@@ -98,6 +106,7 @@ class QuerySet:
 
         return rows
 
+
 class BaseModel:
     table_name: str
     # ---------- Query ----------
@@ -108,7 +117,7 @@ class BaseModel:
     @classmethod
     def all(cls):
         return cls.with_().all()
-    
+
     @classmethod
     def first(cls):
         return cls.with_().first()
@@ -120,11 +129,11 @@ class BaseModel:
     @classmethod
     def where(cls, **filters):
         return cls.with_().where(**filters)
-    
+
     @classmethod
     def count(cls):
         return cls.with_().count()
-    
+
     @classmethod
     def exists(cls, **filters):
         return cls.with_().exists(**filters)
@@ -143,7 +152,7 @@ class BaseModel:
             f"INSERT INTO {cls.table_name} ({keys}) VALUES ({placeholders})",
             values
         )
-        conn.commit()
+        commit(conn)
 
         return cls.find(cursor.lastrowid)
 
@@ -157,7 +166,7 @@ class BaseModel:
             f"UPDATE {cls.table_name} SET {assigns} WHERE id = ?",
             values
         )
-        conn.commit()
+        commit(conn)
         return cls.find(id)
 
     @classmethod
@@ -168,7 +177,7 @@ class BaseModel:
             f"DELETE FROM {cls.table_name} WHERE id = ?",
             (id,)
         )
-        conn.commit()
+        commit(conn)
         return True
 
     def to_dict(self):
@@ -204,7 +213,7 @@ class BaseModel:
             f"UPDATE {self.table_name} SET {assigns} WHERE id = ?",
             values
         )
-        conn.commit()
+        commit(conn)
         return self
 
     def delete(self):
@@ -213,5 +222,3 @@ class BaseModel:
             raise ValueError("Delete requires id")
 
         return self.__class__.delete_by_id(target_id)
-
- 

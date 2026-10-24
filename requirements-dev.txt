@@ -1,0 +1,10 @@
+# ─────────────────────────────────────────────────────────────────────
+# Herramientas de DESARROLLO (no usar en `flet build`).
+#
+# flet-cli y flet-desktop no tienen wheels para Android/iOS, por lo que
+# incluirlas en requirements.txt rompería el build móvil.
+# ─────────────────────────────────────────────────────────────────────
+-r requirements.txt
+
+flet-cli>=0.86.5
+flet-desktop>=0.86.5
