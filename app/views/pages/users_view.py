@@ -3,6 +3,7 @@ from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.user_controller import UserController
 from app.controllers.role_controller import RoleController
+from app.views.ui_helpers import form_dialog_width, is_mobile_page
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
@@ -38,6 +39,7 @@ class UsersView:
             )
             return MainLayout(page=self.page, content=content_layout, router=self.router)
 
+        mobile = is_mobile_page(self.page)
         self.users_container = ft.Column(spacing=10, expand=True, scroll=ft.ScrollMode.AUTO)
 
         # Dialog helpers for consistent show/close across Flet versions
@@ -130,6 +132,7 @@ class UsersView:
                 return
 
             rows = []
+            cards = []
             for user in filtered:
                 u_id = user["id"]
                 name = user["name"]
@@ -205,35 +208,87 @@ class UsersView:
                         )
                     )
 
-                row_card = ft.Container(
-                    content=ft.Row(
-                        controls=[
-                            avatar,
-                            ft.Column(
+                if mobile:
+                    cards.append(
+                        ft.Container(
+                            content=ft.Column(
                                 controls=[
-                                    ft.Text(name, color=T.TEXT, size=15, weight=ft.FontWeight.BOLD),
-                                    ft.Text(email, color=T.TEXT_MUTED, size=12),
+                                    ft.Row(
+                                        controls=[
+                                            avatar,
+                                            ft.Column(
+                                                controls=[
+                                                    ft.Text(
+                                                        name,
+                                                        color=T.TEXT,
+                                                        size=15,
+                                                        weight=ft.FontWeight.BOLD,
+                                                        max_lines=2,
+                                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                                    ),
+                                                    ft.Text(
+                                                        email,
+                                                        color=T.TEXT_MUTED,
+                                                        size=12,
+                                                        max_lines=1,
+                                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                                    ),
+                                                ],
+                                                expand=True,
+                                                spacing=2,
+                                            ),
+                                            ft.Row(
+                                                controls=user_action_btns,
+                                                spacing=4,
+                                            ),
+                                        ],
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        vertical_alignment=ft.CrossAxisAlignment.START,
+                                    ),
+                                    ft.Row(
+                                        controls=[role_badge, status_chip],
+                                        spacing=8,
+                                        wrap=True,
+                                    ),
                                 ],
-                                expand=True,
-                                spacing=2,
+                                spacing=10,
                             ),
-                            role_badge,
-                            status_chip,
-                            ft.Row(
-                                controls=user_action_btns,
-                                spacing=4,
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    ),
-                    padding=14,
-                    border_radius=12,
-                    bgcolor=T.SURFACE_ALT,
-                    border=_all_border(1, T.BORDER_STRONG),
-                )
-                rows.append(row_card)
+                            padding=14,
+                            border_radius=12,
+                            bgcolor=T.SURFACE_ALT,
+                            border=_all_border(1, T.BORDER_STRONG),
+                        )
+                    )
+                else:
+                    row_card = ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                avatar,
+                                ft.Column(
+                                    controls=[
+                                        ft.Text(name, color=T.TEXT, size=15, weight=ft.FontWeight.BOLD),
+                                        ft.Text(email, color=T.TEXT_MUTED, size=12),
+                                    ],
+                                    expand=True,
+                                    spacing=2,
+                                ),
+                                role_badge,
+                                status_chip,
+                                ft.Row(
+                                    controls=user_action_btns,
+                                    spacing=4,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        padding=14,
+                        border_radius=12,
+                        bgcolor=T.SURFACE_ALT,
+                        border=_all_border(1, T.BORDER_STRONG),
+                    )
+                    rows.append(row_card)
 
-            self.users_container.controls = rows
+            self.users_container.controls = cards if mobile else rows
             self.page.update()
 
         # Dialog: Add / Edit User
@@ -373,7 +428,7 @@ class UsersView:
                         spacing=12,
                         tight=True,
                     ),
-                    width=420,
+                    width=form_dialog_width(self.page, 420),
                 ),
                 actions=[
                     ft.TextButton(
@@ -477,7 +532,8 @@ class UsersView:
             color=T.TEXT,
             border_radius=12,
             height=46,
-            width=180,
+            width=None if mobile else 180,
+            expand=mobile,
         )
         self.role_filter_dropdown.on_change = on_role_filter_change
 
@@ -494,7 +550,8 @@ class UsersView:
             color=T.TEXT,
             border_radius=12,
             height=46,
-            width=170,
+            width=None if mobile else 170,
+            expand=mobile,
         )
         status_filter_dropdown.on_change = on_status_filter_change
 
@@ -511,45 +568,79 @@ class UsersView:
             on_click=lambda e: open_user_dialog(),
         )
 
-        header = ft.Row(
+        header = ft.ResponsiveRow(
             controls=[
-                ft.Row(
-                    controls=[
-                        ft.Container(
-                            content=ft.Icon(ft.Icons.SUPERVISED_USER_CIRCLE_ROUNDED, color=T.ON_ACCENT, size=28),
-                            width=52,
-                            height=52,
-                            border_radius=14,
-                            gradient=ft.LinearGradient(
-                                colors=[T.INDIGO, T.INDIGO_DARK],
-                                begin=ft.Alignment(-1, -1),
-                                end=ft.Alignment(1, 1),
+                ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Icon(ft.Icons.SUPERVISED_USER_CIRCLE_ROUNDED, color=T.ON_ACCENT, size=28),
+                                width=52,
+                                height=52,
+                                border_radius=14,
+                                gradient=ft.LinearGradient(
+                                    colors=[T.INDIGO, T.INDIGO_DARK],
+                                    begin=ft.Alignment(-1, -1),
+                                    end=ft.Alignment(1, 1),
+                                ),
+                                alignment=ft.Alignment(0, 0),
                             ),
-                            alignment=ft.Alignment(0, 0),
-                        ),
-                        ft.Column(
-                            controls=[
-                                ft.Text("Gestión de Usuarios", color=T.TEXT, size=24, weight=ft.FontWeight.BOLD),
-                                ft.Text("Administra los usuarios registrados y la asignación de sus roles", color=T.TEXT_SUBTLE, size=13),
-                            ],
-                            spacing=2,
-                        ),
-                    ],
-                    spacing=14,
+                            ft.Column(
+                                controls=[
+                                    ft.Text(
+                                        "Gestión de Usuarios",
+                                        color=T.TEXT,
+                                        size=24,
+                                        weight=ft.FontWeight.BOLD,
+                                        max_lines=2,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                    ),
+                                    ft.Text(
+                                        "Administra los usuarios registrados y la asignación de sus roles",
+                                        color=T.TEXT_SUBTLE,
+                                        size=13,
+                                        max_lines=2,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                    ),
+                                ],
+                                spacing=2,
+                                expand=True,
+                            ),
+                        ],
+                        spacing=14,
+                    ),
+                    col={"xs": 12, "md": 8},
                 ),
-                new_user_btn,
+                ft.Container(
+                    content=ft.Row(
+                        controls=[new_user_btn],
+                        alignment=ft.MainAxisAlignment.END,
+                    ),
+                    col={"xs": 12, "md": 4},
+                ),
             ],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            spacing=12,
+            run_spacing=12,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
-        toolbar = ft.Row(
-            controls=[
-                search_input,
-                self.role_filter_dropdown,
-                status_filter_dropdown,
-            ],
-            spacing=10,
-        )
+        if mobile:
+            toolbar = ft.Column(
+                controls=[
+                    ft.Row([search_input], spacing=0),
+                    ft.Row([self.role_filter_dropdown, status_filter_dropdown], spacing=10),
+                ],
+                spacing=10,
+            )
+        else:
+            toolbar = ft.Row(
+                controls=[
+                    search_input,
+                    self.role_filter_dropdown,
+                    status_filter_dropdown,
+                ],
+                spacing=10,
+            )
 
         content_layout = ft.Container(
             content=ft.Column(
@@ -563,7 +654,7 @@ class UsersView:
                 spacing=12,
                 expand=True,
             ),
-            padding=24,
+            padding=12 if mobile else 24,
             expand=True,
         )
 

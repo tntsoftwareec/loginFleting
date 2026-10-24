@@ -2,6 +2,7 @@ import flet as ft
 from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.role_controller import RoleController
+from app.views.ui_helpers import form_dialog_width, is_mobile_page
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
@@ -34,6 +35,7 @@ class RolesView:
             )
             return MainLayout(page=self.page, content=content_layout, router=self.router)
 
+        mobile = is_mobile_page(self.page)
         self.roles_container = ft.Column(spacing=10, expand=True, scroll=ft.ScrollMode.AUTO)
 
         def show_dialog(dlg):
@@ -115,6 +117,7 @@ class RolesView:
                 return
 
             rows = []
+            cards = []
             for role in filtered:
                 role_id = role["id"]
                 name = role["name"]
@@ -134,6 +137,7 @@ class RolesView:
                         make_perm_chip("Eliminar", can_delete, T.DANGER, ft.Icons.DELETE_FOREVER_ROUNDED),
                     ],
                     spacing=6,
+                    wrap=True,
                 )
 
                 role_action_btns = []
@@ -156,59 +160,87 @@ class RolesView:
                         )
                     )
 
-                row_card = ft.Container(
+                role_icon = ft.Container(
+                    content=ft.Icon(ft.Icons.VERIFIED_USER_ROUNDED, color=T.INDIGO, size=24),
+                    width=42,
+                    height=42,
+                    border_radius=10,
+                    bgcolor=T.INDIGO_BG,
+                    alignment=ft.Alignment(0, 0),
+                )
+
+                users_badge = ft.Container(
                     content=ft.Row(
                         controls=[
-                            ft.Container(
-                                content=ft.Icon(ft.Icons.VERIFIED_USER_ROUNDED, color=T.INDIGO, size=24),
-                                width=42,
-                                height=42,
-                                border_radius=10,
-                                bgcolor=T.INDIGO_BG,
-                                alignment=ft.Alignment(0, 0),
-                            ),
-                            ft.Column(
-                                controls=[
-                                    ft.Row(
-                                        controls=[
-                                            ft.Text(name, color=T.TEXT, size=15, weight=ft.FontWeight.BOLD),
-                                            ft.Container(
-                                                content=ft.Row(
-                                                    controls=[
-                                                        ft.Icon(ft.Icons.PEOPLE_OUTLINED, color=T.CYAN_TEXT, size=13),
-                                                        ft.Text(f"{users_count} usuarios", color=T.CYAN_TEXT, size=11, weight=ft.FontWeight.W_500),
-                                                    ],
-                                                    spacing=3,
-                                                ),
-                                                padding=ft.Padding.symmetric(horizontal=8, vertical=2),
-                                                border_radius=12,
-                                                bgcolor=T.INFO_BG_SOFT,
-                                            ),
-                                        ],
-                                        spacing=8,
-                                    ),
-                                    ft.Text(description, color=T.TEXT_MUTED, size=12, overflow=ft.TextOverflow.ELLIPSIS),
-                                    ft.Container(height=4),
-                                    perms_row,
-                                ],
-                                expand=True,
-                                spacing=2,
-                            ),
-                            ft.Row(
-                                controls=role_action_btns,
-                                spacing=4,
-                            ),
+                            ft.Icon(ft.Icons.PEOPLE_OUTLINED, color=T.CYAN_TEXT, size=13),
+                            ft.Text(f"{users_count} usuarios", color=T.CYAN_TEXT, size=11, weight=ft.FontWeight.W_500),
                         ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        spacing=3,
                     ),
+                    padding=ft.Padding.symmetric(horizontal=8, vertical=2),
+                    border_radius=12,
+                    bgcolor=T.INFO_BG_SOFT,
+                )
+
+                role_info = ft.Column(
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                ft.Text(
+                                    name,
+                                    color=T.TEXT,
+                                    size=15,
+                                    weight=ft.FontWeight.BOLD,
+                                    max_lines=2,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                ),
+                                users_badge,
+                            ],
+                            spacing=8,
+                            wrap=True,
+                        ),
+                        ft.Text(
+                            description,
+                            color=T.TEXT_MUTED,
+                            size=12,
+                            max_lines=2,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                        ),
+                    ],
+                    expand=True,
+                    spacing=2,
+                )
+
+                top_row = ft.Row(
+                    controls=[
+                        role_icon,
+                        role_info,
+                        ft.Row(
+                            controls=role_action_btns,
+                            spacing=4,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                )
+
+                card_body = ft.Column(
+                    controls=[top_row, perms_row],
+                    spacing=8,
+                )
+                card = ft.Container(
+                    content=card_body,
                     padding=14,
                     border_radius=12,
                     bgcolor=T.SURFACE_ALT,
                     border=_all_border(1, T.BORDER_STRONG),
                 )
-                rows.append(row_card)
+                if mobile:
+                    cards.append(card)
+                else:
+                    rows.append(card)
 
-            self.roles_container.controls = rows
+            self.roles_container.controls = cards if mobile else rows
             self.page.update()
 
         # Dialogs: Create/Edit Role with Permissions
@@ -335,7 +367,7 @@ class RolesView:
                         spacing=12,
                         tight=True,
                     ),
-                    width=420,
+                    width=form_dialog_width(self.page, 420),
                 ),
                 actions=[
                     ft.TextButton(
@@ -434,35 +466,60 @@ class RolesView:
             on_click=lambda e: open_role_dialog(),
         )
 
-        header = ft.Row(
+        header = ft.ResponsiveRow(
             controls=[
-                ft.Row(
-                    controls=[
-                        ft.Container(
-                            content=ft.Icon(ft.Icons.ADMIN_PANEL_SETTINGS_ROUNDED, color=T.ON_ACCENT, size=28),
-                            width=52,
-                            height=52,
-                            border_radius=14,
-                            gradient=ft.LinearGradient(
-                                colors=[T.INDIGO, T.INDIGO_DARK],
-                                begin=ft.Alignment(-1, -1),
-                                end=ft.Alignment(1, 1),
+                ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Icon(ft.Icons.ADMIN_PANEL_SETTINGS_ROUNDED, color=T.ON_ACCENT, size=28),
+                                width=52,
+                                height=52,
+                                border_radius=14,
+                                gradient=ft.LinearGradient(
+                                    colors=[T.INDIGO, T.INDIGO_DARK],
+                                    begin=ft.Alignment(-1, -1),
+                                    end=ft.Alignment(1, 1),
+                                ),
+                                alignment=ft.Alignment(0, 0),
                             ),
-                            alignment=ft.Alignment(0, 0),
-                        ),
-                        ft.Column(
-                            controls=[
-                                ft.Text("Gestión de Roles y Permisos", color=T.TEXT, size=24, weight=ft.FontWeight.BOLD),
-                                ft.Text("Crea roles y asigna permisos de lectura, escritura, actualización y eliminación", color=T.TEXT_SUBTLE, size=13),
-                            ],
-                            spacing=2,
-                        ),
-                    ],
-                    spacing=14,
+                            ft.Column(
+                                controls=[
+                                    ft.Text(
+                                        "Gestión de Roles y Permisos",
+                                        color=T.TEXT,
+                                        size=24,
+                                        weight=ft.FontWeight.BOLD,
+                                        max_lines=2,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                    ),
+                                    ft.Text(
+                                        "Crea roles y asigna permisos de lectura, escritura, actualización y eliminación",
+                                        color=T.TEXT_SUBTLE,
+                                        size=13,
+                                        max_lines=2,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                    ),
+                                ],
+                                spacing=2,
+                                expand=True,
+                            ),
+                        ],
+                        spacing=14,
+                    ),
+                    col={"xs": 12, "md": 8},
                 ),
-                new_role_btn,
+                ft.Container(
+                    content=ft.Row(
+                        controls=[new_role_btn],
+                        alignment=ft.MainAxisAlignment.END,
+                    ),
+                    col={"xs": 12, "md": 4},
+                ),
             ],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            spacing=12,
+            run_spacing=12,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
         toolbar = ft.Row(
@@ -482,7 +539,7 @@ class RolesView:
                 spacing=12,
                 expand=True,
             ),
-            padding=24,
+            padding=12 if mobile else 24,
             expand=True,
         )
 
