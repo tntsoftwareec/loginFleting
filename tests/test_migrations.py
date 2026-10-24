@@ -82,13 +82,29 @@ class MigrationsTest(unittest.TestCase):
         ):
             self.assertIn(column, invoice_cols)
 
-    def test_seeds_populated(self):
+    def test_seeds_create_only_initial_admin_and_company(self):
         users = self.conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        clients = self.conn.execute("SELECT COUNT(*) FROM clients").fetchone()[0]
         products = self.conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        services = self.conn.execute("SELECT COUNT(*) FROM services").fetchone()[0]
+        suppliers = self.conn.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0]
+        invoices = self.conn.execute("SELECT COUNT(*) FROM invoices").fetchone()[0]
+        quotations = self.conn.execute("SELECT COUNT(*) FROM quotations").fetchone()[0]
         company = self.conn.execute("SELECT COUNT(*) FROM company").fetchone()[0]
-        self.assertGreaterEqual(users, 2)
-        self.assertEqual(products, 6)
+
+        self.assertEqual(users, 1)
+        self.assertEqual(clients, 1)
+        self.assertEqual(products, 0)
+        self.assertEqual(services, 0)
+        self.assertEqual(suppliers, 0)
+        self.assertEqual(invoices, 0)
+        self.assertEqual(quotations, 0)
         self.assertEqual(company, 1)
+
+        admin = self.conn.execute(
+            "SELECT email FROM users WHERE email = 'admin@pos.com'"
+        ).fetchone()
+        self.assertIsNotNone(admin)
 
     def test_second_run_is_idempotent(self):
         before_users = self.conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]

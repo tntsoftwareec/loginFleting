@@ -181,6 +181,43 @@ dependencias transitivas que no existen en el índice de la plataforma
 destino (en Android solo hay `cffi 2.0.0`). Solución: usar el
 `requirements.txt` depurado del repo (solo dependencias directas).
 
+## Datos iniciales
+
+Una instalación nueva **no carga clientes, productos, proveedores, servicios,
+facturas ni cotizaciones de demostración**. Solo se crea:
+
+- El usuario administrador: `admin@pos.com` / `admin123`.
+- El cliente genérico `CONSUMIDOR FINAL`.
+- Los roles base del sistema.
+- Una configuración de empresa vacía para completar en **Mi Empresa**.
+
+Cambia la contraseña del administrador después del primer ingreso.
+
+### Limpiar datos de prueba de una base existente
+
+Si ya estás usando una base con datos de demostración, ejecuta:
+
+```bash
+python scripts/clean_demo_data.py
+```
+
+El script conserva la configuración de la empresa y el usuario
+`admin@pos.com`, y elimina facturas, cotizaciones, movimientos de inventario,
+clientes, proveedores, productos, servicios y usuarios de prueba. También
+borra los PDFs/XMLs generados y reinicia la numeración a 1.
+
+Para revisar qué se eliminaría sin tocar la base:
+
+```bash
+python scripts/clean_demo_data.py --dry-run
+```
+
+Si tu administrador usa otro correo:
+
+```bash
+python scripts/clean_demo_data.py --keep-email tu-correo@dominio.com
+```
+
 ## Ejecutar las pruebas
 
 ```bash

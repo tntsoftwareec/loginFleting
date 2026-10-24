@@ -8,17 +8,18 @@ class CompanyModel(BaseModel):
         info = cls.first()
         if not info:
             info = cls.create(
-                ruc="1792998877001",
-                razon_social="FLETING SOLUTIONS S.A.S.",
-                nombre_comercial="FLETING POS & TECH",
-                direccion_matriz="Av. de los Granados N40-100 y 6 de Diciembre, Quito",
-                telefono="0991234567",
-                email="facturacion@fleting.ec",
+                ruc="",
+                razon_social="MI EMPRESA",
+                nombre_comercial="MI NEGOCIO",
+                direccion_matriz="",
+                telefono="",
+                email="",
                 ambiente_sri=1,
                 establecimiento="001",
                 punto_emision="001",
                 secuencial_factura=1,
+                secuencial_cotizacion=1,
                 contribuyente_especial="",
-                obligado_contabilidad="SI"
+                obligado_contabilidad="NO"
             )
         return info

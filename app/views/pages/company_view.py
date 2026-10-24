@@ -53,12 +53,12 @@ class CompanyView:
         self.company_info = CompanyController.get_info()
 
         # Form Fields - General Info
-        tf_ruc = ft.TextField(label="R.U.C. Empresa", value=self.company_info.get("ruc", "1792998877001"), expand=True)
-        tf_razon = ft.TextField(label="Razón Social", value=self.company_info.get("razon_social", "FLETING SOLUTIONS S.A.S."), expand=True)
-        tf_comercial = ft.TextField(label="Nombre Comercial", value=self.company_info.get("nombre_comercial", "FLETING POS"), expand=True)
-        tf_matriz = ft.TextField(label="Dirección Matriz", value=self.company_info.get("direccion_matriz", "Av. de los Granados N40-100"), multiline=True, max_lines=2, expand=True)
-        tf_tel = ft.TextField(label="Teléfono Contacto", value=self.company_info.get("telefono", "0991234567"), expand=True)
-        tf_email = ft.TextField(label="Email de la Empresa", value=self.company_info.get("email", "facturacion@fleting.ec"), expand=True)
+        tf_ruc = ft.TextField(label="R.U.C. Empresa", value=self.company_info.get("ruc", ""), expand=True)
+        tf_razon = ft.TextField(label="Razón Social", value=self.company_info.get("razon_social", "MI EMPRESA"), expand=True)
+        tf_comercial = ft.TextField(label="Nombre Comercial", value=self.company_info.get("nombre_comercial", "MI NEGOCIO"), expand=True)
+        tf_matriz = ft.TextField(label="Dirección Matriz", value=self.company_info.get("direccion_matriz", ""), multiline=True, max_lines=2, expand=True)
+        tf_tel = ft.TextField(label="Teléfono Contacto", value=self.company_info.get("telefono", ""), expand=True)
+        tf_email = ft.TextField(label="Email de la Empresa", value=self.company_info.get("email", ""), expand=True)
 
         # SRI Config
         dd_ambiente = ft.Dropdown(

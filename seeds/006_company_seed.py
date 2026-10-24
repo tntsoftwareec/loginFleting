@@ -1,6 +1,9 @@
 """
 Seed: 006_company_seed.py
-Seeds initial company settings record.
+Crea la configuración inicial vacía de la empresa.
+
+Los datos reales (RUC, razón social, certificado, etc.) se registran desde
+la pantalla "Mi Empresa".
 """
 from app.services.encryption_service import EncryptionService
 
@@ -18,12 +21,11 @@ def run(db):
                 contribuyente_especial, obligado_contabilidad, firma_path, firma_pass,
                 sri_email, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_ssl
             ) VALUES (
-                '1792998877001', 'FLETING SOLUTIONS S.A.S.', 'FLETING POS & TECH',
-                'Av. de los Granados N40-100 y 6 de Diciembre, Quito - Ecuador',
-                '0991234567', 'facturacion@fleting.ec', 1, '001', '001', 1,
+                '', 'MI EMPRESA', 'MI NEGOCIO',
+                '', '', '', 1, '001', '001', 1,
                 1,
-                '', 'SI', '', '', 'recepcion.sri@sri.gob.ec',
-                'smtp.gmail.com', 587, 'facturacion.demo@fleting.ec', ?, 0
+                '', 'NO', '', '', 'recepcion.sri@sri.gob.ec',
+                'smtp.gmail.com', 587, '', ?, 0
             )
         """, (EncryptionService.encrypt(""),))
 
