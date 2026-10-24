@@ -84,6 +84,22 @@ class CompanyView:
         tf_contrib = ft.TextField(label="N° Contribuyente Especial (Opcional)", value=self.company_info.get("contribuyente_especial", ""), expand=True)
         tf_sri_email = ft.TextField(label="Email SRI para Facturación", value=self.company_info.get("sri_email", "recepcion.sri@sri.gob.ec"), expand=True)
 
+        # Numeración inicial de comprobantes
+        tf_sec_factura = ft.TextField(
+            label="Número para iniciar facturación",
+            value=str(self.company_info.get("secuencial_factura", 1)),
+            hint_text="Ej: 1",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            expand=True,
+        )
+        tf_sec_cotizacion = ft.TextField(
+            label="Número para iniciar cotizaciones",
+            value=str(self.company_info.get("secuencial_cotizacion", 1)),
+            hint_text="Ej: 1",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            expand=True,
+        )
+
         # Signature File Config - allow typing/pasting or file picking
         tf_firma_path = ft.TextField(
             label="Ruta Certificado Digital (.p12 / .pfx)",
@@ -322,12 +338,16 @@ class CompanyView:
                 smtp_port=tf_smtp_port.value,
                 smtp_user=tf_smtp_user.value,
                 smtp_pass=tf_smtp_pass.value,
-                smtp_ssl=sw_smtp_ssl.value
+                smtp_ssl=sw_smtp_ssl.value,
+                secuencial_factura=tf_sec_factura.value,
+                secuencial_cotizacion=tf_sec_cotizacion.value,
             )
 
             if success:
                 show_toast("Datos de la empresa y configuración guardados con éxito.")
                 self.company_info = CompanyController.get_info()
+                tf_sec_factura.value = str(self.company_info.get("secuencial_factura", 1))
+                tf_sec_cotizacion.value = str(self.company_info.get("secuencial_cotizacion", 1))
                 render_badge()
             else:
                 show_toast(res, is_error=True)
@@ -455,7 +475,45 @@ class CompanyView:
             border=_all_border(1, T.SURFACE_ALT),
         )
 
-        # Section 3: SRI Parameters
+        # Section 3: Numeración inicial de comprobantes
+        sec_numeracion = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        "Numeración de Facturas y Cotizaciones",
+                        size=15,
+                        weight=ft.FontWeight.BOLD,
+                        color=T.CYAN_TEXT,
+                    ),
+                    ft.Text(
+                        "Indica el número con el que deseas comenzar. Se usará en el próximo comprobante y luego se incrementará automáticamente.",
+                        size=12,
+                        color=T.TEXT_MUTED,
+                    ),
+                    ft.Text(
+                        "Si ya existen facturas o cotizaciones emitidas, usa un número mayor al último para evitar duplicados.",
+                        size=11,
+                        color=T.WARNING,
+                    ),
+                    ft.Row(
+                        [tf_sec_factura, tf_sec_cotizacion],
+                        spacing=10,
+                    ),
+                    ft.Text(
+                        "Ejemplo: si escribes 100, la próxima factura será 001-001-000000100.",
+                        size=11,
+                        color=T.TEXT_SUBTLE,
+                    ),
+                ],
+                spacing=12,
+            ),
+            padding=16,
+            bgcolor=T.SURFACE,
+            border_radius=10,
+            border=_all_border(1, T.SURFACE_ALT),
+        )
+
+        # Section 4: SRI Parameters
         sec_sri = ft.Container(
             content=ft.Column(
                 controls=[
@@ -543,6 +601,8 @@ class CompanyView:
                 sec_business,
                 ft.Container(height=10),
                 sec_logo,
+                ft.Container(height=10),
+                sec_numeracion,
                 ft.Container(height=10),
                 sec_sri,
                 ft.Container(height=10),
