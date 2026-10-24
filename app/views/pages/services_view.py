@@ -2,6 +2,7 @@ import flet as ft
 from core import theme as T
 from app.views.layouts.main_layout import MainLayout
 from app.controllers.service_controller import ServiceController
+from app.views.ui_helpers import form_dialog_width, is_mobile_page
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
@@ -124,6 +125,7 @@ class ServicesView:
                 return
 
             rows = []
+            cards = []
             for s in filtered:
                 is_active = s.get("status", "active") == "active"
                 status_chip = ft.Container(
@@ -204,55 +206,132 @@ class ServicesView:
                     )
                 )
 
-            data_table = ft.DataTable(
-                columns=[
-                    ft.DataColumn(ft.Text("CÓDIGO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
-                    ft.DataColumn(ft.Text("NOMBRE SERVICIO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
-                    ft.DataColumn(ft.Text("CATEGORÍA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
-                    ft.DataColumn(ft.Text("PRECIO TARIFA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
-                    ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
-                    ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
-                    ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
-                ],
-                rows=rows,
-                heading_row_color=T.SURFACE_ALT,
-                horizontal_margin=15,
-                column_spacing=20,
-            )
-
-            self.services_container.controls.append(
-                ft.Container(
-                    content=data_table,
-                    bgcolor=T.SURFACE,
-                    border_radius=10,
-                    border=_all_border(1, T.SURFACE_ALT),
-                    padding=10,
+                descripcion = (s.get("descripcion") or "").strip()
+                cards.append(
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Column(
+                                            controls=[
+                                                ft.Text(
+                                                    s["codigo"],
+                                                    size=11,
+                                                    weight=ft.FontWeight.BOLD,
+                                                    color=T.CYAN_TEXT,
+                                                ),
+                                                ft.Text(
+                                                    s["nombre"],
+                                                    size=15,
+                                                    weight=ft.FontWeight.BOLD,
+                                                    color=T.TEXT,
+                                                    max_lines=2,
+                                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                                ),
+                                                ft.Text(
+                                                    s.get("categoria") or "Servicios",
+                                                    size=11,
+                                                    color=T.TEXT_MUTED,
+                                                ),
+                                            ],
+                                            spacing=2,
+                                            expand=True,
+                                        ),
+                                        status_chip,
+                                    ],
+                                    vertical_alignment=ft.CrossAxisAlignment.START,
+                                ),
+                                ft.Text(
+                                    descripcion or "Sin descripción",
+                                    size=12,
+                                    color=T.TEXT_SECONDARY,
+                                    max_lines=2,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.Text(
+                                            f"${float(s['precio']):.2f}",
+                                            size=14,
+                                            weight=ft.FontWeight.BOLD,
+                                            color=T.SUCCESS_TEXT,
+                                        ),
+                                        ft.Text(
+                                            f"IVA {float(s.get('iva_porcentaje', 15.0)):.0f}%",
+                                            size=12,
+                                            color=T.TEXT_SECONDARY,
+                                        ),
+                                    ],
+                                    spacing=12,
+                                ),
+                                ft.Row([actions], alignment=ft.MainAxisAlignment.END),
+                            ],
+                            spacing=8,
+                        ),
+                        padding=14,
+                        bgcolor=T.SURFACE,
+                        border_radius=10,
+                        border=_all_border(1, T.SURFACE_ALT),
+                    )
                 )
-            )
+
+            if is_mobile_page(self.page):
+                self.services_container.controls.append(
+                    ft.Column(controls=cards, spacing=10)
+                )
+            else:
+                data_table = ft.DataTable(
+                    columns=[
+                        ft.DataColumn(ft.Text("CÓDIGO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("NOMBRE SERVICIO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("CATEGORÍA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("PRECIO TARIFA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ],
+                    rows=rows,
+                    heading_row_color=T.SURFACE_ALT,
+                    horizontal_margin=15,
+                    column_spacing=20,
+                )
+
+                self.services_container.controls.append(
+                    ft.Container(
+                        content=data_table,
+                        bgcolor=T.SURFACE,
+                        border_radius=10,
+                        border=_all_border(1, T.SURFACE_ALT),
+                        padding=10,
+                    )
+                )
             self.page.update()
 
         def open_service_dialog(serv=None):
             is_edit = serv is not None
+            mobile = is_mobile_page(self.page)
+            field_expand = not mobile
 
             tf_cod = ft.TextField(
                 label="Código del Servicio",
                 value=serv["codigo"] if is_edit else "",
-                expand=True,
+                expand=field_expand,
             )
             tf_nom = ft.TextField(
                 label="Nombre del Servicio",
                 value=serv["nombre"] if is_edit else "",
-                expand=True,
+                expand=field_expand,
             )
             tf_cat = ft.TextField(
                 label="Categoría",
                 value=serv.get("categoria", "Servicios") if is_edit else "Servicios",
-                expand=True,
+                expand=field_expand,
             )
             tf_prec = ft.TextField(
                 label="Precio del Servicio ($)",
                 value=str(serv["precio"]) if is_edit else "0.00",
-                expand=True,
+                expand=field_expand,
             )
             tf_iva = ft.Dropdown(
                 label="Tarifa IVA",
@@ -261,14 +340,14 @@ class ServicesView:
                     ft.dropdown.Option("15", "IVA 15%"),
                     ft.dropdown.Option("0", "IVA 0%"),
                 ],
-                expand=True,
+                expand=field_expand,
             )
             tf_desc = ft.TextField(
                 label="Descripción del Servicio",
                 value=serv.get("descripcion", "") if is_edit else "",
                 multiline=True,
                 max_lines=2,
-                expand=True,
+                expand=field_expand,
             )
             sw_status = ft.Switch(
                 label="Servicio Activo",
@@ -300,21 +379,26 @@ class ServicesView:
                 else:
                     show_toast(res, is_error=True)
 
+            if mobile:
+                form_controls = [tf_cod, tf_cat, tf_nom, tf_prec, tf_iva, tf_desc, sw_status]
+            else:
+                form_controls = [
+                    ft.Row([tf_cod, tf_cat], spacing=10),
+                    tf_nom,
+                    ft.Row([tf_prec, tf_iva], spacing=10),
+                    tf_desc,
+                    sw_status,
+                ]
+
             dlg = ft.AlertDialog(
                 title=ft.Text("Editar Servicio" if is_edit else "Nuevo Servicio", weight=ft.FontWeight.BOLD),
                 content=ft.Container(
                     content=ft.Column(
-                        controls=[
-                            ft.Row([tf_cod, tf_cat], spacing=10),
-                            tf_nom,
-                            ft.Row([tf_prec, tf_iva], spacing=10),
-                            tf_desc,
-                            sw_status,
-                        ],
+                        controls=form_controls,
                         tight=True,
                         spacing=12,
                     ),
-                    width=500,
+                    width=form_dialog_width(self.page, 500),
                 ),
                 actions=[
                     ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg)),
@@ -358,9 +442,9 @@ class ServicesView:
             prefix_icon=ft.Icons.SEARCH,
             on_change=on_search_change,
             height=42,
+            width=260,
             text_size=14,
             content_padding=ft.Padding.symmetric(horizontal=10, vertical=0),
-            expand=True,
         )
 
         can_write = AppState.has_permission("can_write")
@@ -375,7 +459,7 @@ class ServicesView:
         )
 
         header_card = ft.Container(
-            content=ft.Row(
+            content=ft.Column(
                 controls=[
                     ft.Row(
                         controls=[
@@ -386,13 +470,20 @@ class ServicesView:
                                     ft.Text("Administración de servicios ofrecidos y tarifas de facturación", size=12, color=T.TEXT_MUTED),
                                 ],
                                 spacing=0,
+                                expand=True,
                             ),
                         ],
                         spacing=12,
                     ),
-                    ft.Row([search_field, btn_add], spacing=10, width=500),
+                    ft.Row(
+                        controls=[search_field, btn_add],
+                        spacing=10,
+                        wrap=True,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
                 ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                spacing=12,
+                tight=True,
             ),
             padding=16,
             bgcolor=T.SURFACE,
