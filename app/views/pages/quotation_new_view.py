@@ -282,7 +282,7 @@ class QuotationNewView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.DESCRIPTION_OUTLINED, size=40, color=T.TEXT_SUBTLE),
+                                ft.Icon(ft.Icons.DESCRIPTION_OUTLINED, size=40, color=T.ICON_MUTED),
                                 ft.Text("Agregue ítems a la cotización", color=T.TEXT_MUTED, size=13),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -580,7 +580,7 @@ class QuotationNewView:
                         controls=[
                             ft.IconButton(
                                 icon=ft.Icons.ARROW_BACK_ROUNDED,
-                                icon_color=T.TEXT_MUTED,
+                                icon_color=T.ICON_NEON_BLUE,
                                 tooltip="Volver al historial",
                                 on_click=lambda e: self.router.navigate("/quotations"),
                             ),

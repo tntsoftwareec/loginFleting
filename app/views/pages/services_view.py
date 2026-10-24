@@ -110,7 +110,7 @@ class ServicesView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.TEXT_SUBTLE),
+                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.ICON_MUTED),
                                 ft.Text("No se encontraron servicios", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,

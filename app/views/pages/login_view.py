@@ -99,7 +99,7 @@ class LoginView:
         login_btn = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Icon(ft.Icons.LOGIN_ROUNDED, color=T.ON_ACCENT, size=20),
+                    ft.Icon(ft.Icons.LOGIN_ROUNDED, color=T.ICON_NEON, size=20),
                     ft.Text(
                         "Iniciar Sesión",
                         color=T.ON_ACCENT,

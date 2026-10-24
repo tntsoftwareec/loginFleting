@@ -293,7 +293,7 @@ class InventoryView:
                 content = ft.Container(
                     content=ft.Column(
                         controls=[
-                            ft.Icon(ft.Icons.HISTORY_ROUNDED, size=42, color=T.TEXT_SUBTLE),
+                            ft.Icon(ft.Icons.HISTORY_ROUNDED, size=42, color=T.ICON_MUTED),
                             ft.Text(
                                 "Todavía no hay movimientos registrados.",
                                 color=T.TEXT_MUTED,
@@ -486,7 +486,7 @@ class InventoryView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.TEXT_SUBTLE),
+                                ft.Icon(ft.Icons.SEARCH_OFF_ROUNDED, size=48, color=T.ICON_MUTED),
                                 ft.Text(
                                     "No se encontraron productos con ese filtro.",
                                     color=T.TEXT_MUTED,

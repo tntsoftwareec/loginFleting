@@ -27,63 +27,63 @@ class HomeView:
                 "title": "Punto de Venta (POS)",
                 "desc": "Emisión de facturas electrónicas, carritos de venta y cobro en caja",
                 "icon": ft.Icons.POINT_OF_SALE_ROUNDED,
-                "color": T.SUCCESS_STRONG,
+                "color": T.ICON_NEON,
                 "route": "/pos"
             },
             {
                 "title": "Facturas Emitidas",
                 "desc": "Consulta de comprobantes, descarga de XML y RIDE PDF, re-envío por correo",
                 "icon": ft.Icons.RECEIPT_LONG_ROUNDED,
-                "color": T.PRIMARY,
+                "color": T.ICON_NEON_BLUE,
                 "route": "/invoices"
             },
             {
                 "title": "Directorio de Clientes",
                 "desc": "Gestión CRUD de clientes, RUC/Cédula, correo y teléfonos",
                 "icon": ft.Icons.PEOPLE_ROUNDED,
-                "color": T.SKY,
+                "color": T.ICON_NEON_ALT,
                 "route": "/clients"
             },
             {
                 "title": "Gestión de Proveedores",
                 "desc": "Control de distribuidores, marcas y personas de contacto",
                 "icon": ft.Icons.LOCAL_SHIPPING_ROUNDED,
-                "color": T.SUCCESS,
+                "color": T.ICON_NEON,
                 "route": "/suppliers"
             },
             {
                 "title": "Catálogo de Productos",
                 "desc": "Precios, costos, imágenes y datos del catálogo de mercancías",
                 "icon": ft.Icons.INVENTORY_2_ROUNDED,
-                "color": T.PURPLE,
+                "color": T.ICON_NEON_PINK,
                 "route": "/products"
             },
             {
                 "title": "Inventario y Existencias",
                 "desc": "Entradas, salidas, ajustes de stock, alertas e historial de movimientos",
                 "icon": ft.Icons.WAREHOUSE_ROUNDED,
-                "color": T.WARNING,
+                "color": T.ICON_NEON_YELLOW,
                 "route": "/inventory"
             },
             {
                 "title": "Servicios Ofrecidos",
                 "desc": "Tarifas de servicios, consultorías y soporte técnico",
                 "icon": ft.Icons.MISCELLANEOUS_SERVICES_ROUNDED,
-                "color": T.CYAN,
+                "color": T.ICON_NEON_ALT,
                 "route": "/services"
             },
             {
                 "title": "Datos de Empresa & Firma",
                 "desc": "Parámetros del negocio, RUC, firma digital .p12 y correo SMTP",
                 "icon": ft.Icons.BUSINESS_ROUNDED,
-                "color": T.PINK,
+                "color": T.ICON_NEON_ORANGE,
                 "route": "/company"
             },
             {
                 "title": "Usuarios y Permisos",
                 "desc": "Administración de accesos de personal, cajeros y roles del sistema",
                 "icon": ft.Icons.SUPERVISED_USER_CIRCLE_ROUNDED,
-                "color": T.INDIGO,
+                "color": T.ICON_NEON_PURPLE,
                 "route": "/users"
             },
         ]
@@ -96,8 +96,9 @@ class HomeView:
                         ft.Row(
                             controls=[
                                 ft.Container(
-                                    content=ft.Icon(m["icon"], size=24, color=T.ON_ACCENT),
-                                    bgcolor=m["color"],
+                                    content=ft.Icon(m["icon"], size=24, color=m["color"]),
+                                    bgcolor=T.SURFACE_ALT,
+                                    border=_all_border(1, m["color"]),
                                     padding=10,
                                     border_radius=8,
                                 ),

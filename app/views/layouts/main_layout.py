@@ -46,7 +46,7 @@ class MainLayout(ft.Column):
                 ft.PopupMenuItem(
                     content=ft.Row(
                         controls=[
-                            ft.Icon(r["icon"], size=18),
+                            ft.Icon(r["icon"], size=18, color=T.ICON_NEON),
                             ft.Text(
                                 I18n.t(r["label"]) if "." in r["label"] else r["label"],
                                 size=13
@@ -63,8 +63,8 @@ class MainLayout(ft.Column):
             ft.PopupMenuItem(
                 content=ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.LOGOUT_ROUNDED, color=T.DANGER, size=18),
-                        ft.Text("Cerrar sesión", color=T.DANGER, size=13),
+                        ft.Icon(ft.Icons.LOGOUT_ROUNDED, color=T.ICON_NEON_PINK, size=18),
+                        ft.Text("Cerrar sesión", color=T.DANGER_TEXT, size=13),
                     ],
                     spacing=10,
                 ),
@@ -76,7 +76,7 @@ class MainLayout(ft.Column):
         if user:
             title_widget = ft.Row(
                 controls=[
-                    ft.Icon(ft.Icons.POINT_OF_SALE_ROUNDED, color=T.INFO, size=24),
+                    ft.Icon(ft.Icons.POINT_OF_SALE_ROUNDED, color=T.ICON_NEON_ALT, size=24),
                     ft.Column(
                         controls=[
                             ft.Text(AppConfig.APP_NAME, size=15, weight=ft.FontWeight.BOLD),
@@ -101,7 +101,7 @@ class MainLayout(ft.Column):
             nav_buttons.append(
                 ft.IconButton(
                     icon=ft.Icons.ARROW_BACK_ROUNDED,
-                    icon_color=T.TEXT_MUTED,
+                    icon_color=T.ICON_NEON_BLUE,
                     tooltip="Atrás",
                     on_click=lambda e: self.router.go_back(),
                 )
@@ -110,7 +110,7 @@ class MainLayout(ft.Column):
             nav_buttons.append(
                 ft.IconButton(
                     icon=ft.Icons.ARROW_FORWARD_ROUNDED,
-                    icon_color=T.TEXT_MUTED,
+                    icon_color=T.ICON_NEON_BLUE,
                     tooltip="Adelante",
                     on_click=lambda e: self.router.go_forward(),
                 )
@@ -120,13 +120,13 @@ class MainLayout(ft.Column):
         quick_actions = []
         if AppState.device != "mobile":
             quick_actions = [
-                ft.IconButton(ft.Icons.POINT_OF_SALE_ROUNDED, tooltip="POS", icon_color=T.SUCCESS_STRONG, on_click=lambda e: self.router.navigate("/pos")),
-                ft.IconButton(ft.Icons.RECEIPT_LONG_ROUNDED, tooltip="Facturas", icon_color=T.INFO, on_click=lambda e: self.router.navigate("/invoices")),
-                ft.IconButton(ft.Icons.DESCRIPTION_ROUNDED, tooltip="Cotizaciones", icon_color=T.PURPLE_TEXT, on_click=lambda e: self.router.navigate("/quotations")),
-                ft.IconButton(ft.Icons.PEOPLE_ROUNDED, tooltip="Clientes", icon_color=T.INFO_TEXT, on_click=lambda e: self.router.navigate("/clients")),
-                ft.IconButton(ft.Icons.INVENTORY_2_ROUNDED, tooltip="Productos", icon_color=T.PURPLE, on_click=lambda e: self.router.navigate("/products")),
-                ft.IconButton(ft.Icons.WAREHOUSE_ROUNDED, tooltip="Inventario", icon_color=T.WARNING, on_click=lambda e: self.router.navigate("/inventory")),
-                ft.IconButton(ft.Icons.BUSINESS_ROUNDED, tooltip="Empresa", icon_color=T.PINK, on_click=lambda e: self.router.navigate("/company")),
+                ft.IconButton(ft.Icons.POINT_OF_SALE_ROUNDED, tooltip="POS", icon_color=T.ICON_NEON, on_click=lambda e: self.router.navigate("/pos")),
+                ft.IconButton(ft.Icons.RECEIPT_LONG_ROUNDED, tooltip="Facturas", icon_color=T.ICON_NEON_BLUE, on_click=lambda e: self.router.navigate("/invoices")),
+                ft.IconButton(ft.Icons.DESCRIPTION_ROUNDED, tooltip="Cotizaciones", icon_color=T.ICON_NEON_PURPLE, on_click=lambda e: self.router.navigate("/quotations")),
+                ft.IconButton(ft.Icons.PEOPLE_ROUNDED, tooltip="Clientes", icon_color=T.ICON_NEON_ALT, on_click=lambda e: self.router.navigate("/clients")),
+                ft.IconButton(ft.Icons.INVENTORY_2_ROUNDED, tooltip="Productos", icon_color=T.ICON_NEON_PINK, on_click=lambda e: self.router.navigate("/products")),
+                ft.IconButton(ft.Icons.WAREHOUSE_ROUNDED, tooltip="Inventario", icon_color=T.ICON_NEON_YELLOW, on_click=lambda e: self.router.navigate("/inventory")),
+                ft.IconButton(ft.Icons.BUSINESS_ROUNDED, tooltip="Empresa", icon_color=T.ICON_NEON_ORANGE, on_click=lambda e: self.router.navigate("/company")),
             ]
 
         # En móvil, solo mostrar logout y menú
@@ -137,7 +137,7 @@ class MainLayout(ft.Column):
         actions.append(
             ft.IconButton(
                 icon=ft.Icons.LOGOUT_ROUNDED,
-                icon_color=T.DANGER,
+                icon_color=T.ICON_NEON_PINK,
                 tooltip="Cerrar sesión",
                 on_click=self._do_logout,
             )
@@ -145,6 +145,7 @@ class MainLayout(ft.Column):
         actions.append(
             ft.PopupMenuButton(
                 icon=ft.Icons.MENU,
+                icon_color=T.ICON_NEON,
                 items=items,
             )
         )
@@ -172,7 +173,8 @@ class MainLayout(ft.Column):
             if r.get("show_in_bottom"):
                 destinations.append(
                     ft.NavigationBarDestination(
-                        icon=r["icon"],
+                        icon=ft.Icon(r["icon"], color=T.ICON_NEON),
+                        selected_icon=ft.Icon(r["icon"], color=T.ICON_NEON_ALT),
                         label=I18n.t(r["label"]) if "." in r["label"] else r["label"],
                     )
                 )

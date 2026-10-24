@@ -272,7 +272,7 @@ class POSView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SHOPPING_BAG_OUTLINED, size=40, color=T.TEXT_SUBTLE),
+                                ft.Icon(ft.Icons.SHOPPING_BAG_OUTLINED, size=40, color=T.ICON_MUTED),
                                 ft.Text("Carrito de compras vacío", color=T.TEXT_MUTED, size=13),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,

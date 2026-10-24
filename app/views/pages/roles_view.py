@@ -101,7 +101,7 @@ class RolesView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SHIELD_OUTLINED, color=T.TEXT_SUBTLE, size=48),
+                                ft.Icon(ft.Icons.SHIELD_OUTLINED, color=T.ICON_MUTED, size=48),
                                 ft.Text("No se encontraron roles", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,

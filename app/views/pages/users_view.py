@@ -116,7 +116,7 @@ class UsersView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.PERSON_OFF_ROUNDED, color=T.TEXT_SUBTLE, size=48),
+                                ft.Icon(ft.Icons.PERSON_OFF_ROUNDED, color=T.ICON_MUTED, size=48),
                                 ft.Text("No se encontraron usuarios", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,

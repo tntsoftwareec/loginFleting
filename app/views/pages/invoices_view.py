@@ -361,7 +361,7 @@ class InvoicesView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.RECEIPT_LONG_OUTLINED, size=48, color=T.TEXT_SUBTLE),
+                                ft.Icon(ft.Icons.RECEIPT_LONG_OUTLINED, size=48, color=T.ICON_MUTED),
                                 ft.Text("No se encontraron facturas emitidas", color=T.TEXT_MUTED, size=16),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
