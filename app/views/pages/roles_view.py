@@ -19,6 +19,16 @@ def _all_border(width: int, color: str) -> ft.Border:
     return ft.Border(top=side, right=side, bottom=side, left=side)
 
 
+def _chunk(controls: list, size: int) -> list[list]:
+    """Divide controles en filas sin usar ``Row(wrap=True)``.
+
+    Flet 1.0.4 en escritorio pinta un bloque gris cuando un ``Row`` usa
+    ``wrap=True`` dentro de un diálogo; por eso armamos las filas a mano.
+    """
+    size = max(1, int(size))
+    return [controls[i:i + size] for i in range(0, len(controls), size)]
+
+
 class RolesView:
     def __init__(self, page: ft.Page, router):
         self.page = page
@@ -108,7 +118,11 @@ class RolesView:
             return ft.Container(
                 content=ft.Row(
                     controls=[
-                        ft.Icon(icon_name, color=T.INDIGO_TEXT, size=12),
+                        ft.Icon(
+                            getattr(ft.Icons, icon_name, ft.Icons.APPS),
+                            color=T.INDIGO_TEXT,
+                            size=12,
+                        ),
                         ft.Text(
                             label,
                             color=T.INDIGO_TEXT,
@@ -187,10 +201,12 @@ class RolesView:
                         make_module_chip("Sin módulos asignados", "LOCK_OUTLINE")
                     )
 
-                modules_row = ft.Row(
-                    controls=module_chips,
+                modules_row = ft.Column(
+                    controls=[
+                        ft.Row(controls=chips, spacing=6)
+                        for chips in _chunk(module_chips, 3 if mobile else 8)
+                    ],
                     spacing=6,
-                    wrap=True,
                 )
 
                 role_action_btns = []
@@ -259,11 +275,12 @@ class RolesView:
                                     weight=ft.FontWeight.BOLD,
                                     max_lines=2,
                                     overflow=ft.TextOverflow.ELLIPSIS,
+                                    expand=True,
                                 ),
                                 users_badge,
                             ],
                             spacing=8,
-                            wrap=True,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         ),
                         ft.Text(
                             description,
@@ -307,6 +324,15 @@ class RolesView:
 
         # ── Diálogo crear/editar rol con matriz de permisos ────────────────
         def open_role_dialog(role=None):
+            # El ancho de página puede cambiar después del primer render;
+            # recalculamos el layout del diálogo con el tamaño actual.
+            dialog_width = wide_dialog_width(self.page, 860)
+            dialog_mobile = is_mobile_page(self.page) or dialog_width < 600
+            checkbox_width = (
+                max(56, min(82, (dialog_width - 42) // 4))
+                if dialog_mobile
+                else 82
+            )
             is_edit = role is not None
             role_id = role["id"] if is_edit else None
             current_permissions = (
@@ -373,7 +399,7 @@ class RolesView:
                         value=bool(current.get(action, False)),
                         fill_color=getattr(T, ACTION_COLORS[action], T.INDIGO),
                         label_style=ft.TextStyle(size=11, color=T.TEXT_SECONDARY),
-                        width=82,
+                        width=checkbox_width,
                     )
                     checkbox.on_change = (
                         lambda e, k=key, a=action: on_action_change(e, k, a)
@@ -382,44 +408,54 @@ class RolesView:
                     checkboxes.append(checkbox)
                 permission_checks[key] = checks
 
+                module_icon = ft.Icon(
+                    getattr(ft.Icons, module["icon"], ft.Icons.APPS),
+                    size=18,
+                    color=T.INDIGO_TEXT,
+                )
+                module_info = ft.Column(
+                    controls=[
+                        ft.Text(
+                            module["label"],
+                            size=12,
+                            weight=ft.FontWeight.W_600,
+                            color=T.TEXT,
+                        ),
+                        ft.Text(
+                            module["description"],
+                            size=10,
+                            color=T.TEXT_SUBTLE,
+                            max_lines=1,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                        ),
+                    ],
+                    spacing=0,
+                    expand=True,
+                )
+                checkboxes_row = ft.Row(controls=checkboxes, spacing=2)
+
+                if dialog_mobile:
+                    module_content = ft.Column(
+                        controls=[
+                            ft.Row(
+                                controls=[module_icon, module_info],
+                                spacing=8,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                            checkboxes_row,
+                        ],
+                        spacing=4,
+                    )
+                else:
+                    module_content = ft.Row(
+                        controls=[module_icon, module_info, checkboxes_row],
+                        spacing=8,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    )
+
                 module_rows.append(
                     ft.Container(
-                        content=ft.Row(
-                            controls=[
-                                ft.Icon(
-                                    getattr(ft.Icons, module["icon"], ft.Icons.APPS),
-                                    size=18,
-                                    color=T.INDIGO_TEXT,
-                                ),
-                                ft.Column(
-                                    controls=[
-                                        ft.Text(
-                                            module["label"],
-                                            size=12,
-                                            weight=ft.FontWeight.W_600,
-                                            color=T.TEXT,
-                                        ),
-                                        ft.Text(
-                                            module["description"],
-                                            size=10,
-                                            color=T.TEXT_SUBTLE,
-                                            max_lines=1,
-                                            overflow=ft.TextOverflow.ELLIPSIS,
-                                        ),
-                                    ],
-                                    spacing=0,
-                                    expand=True,
-                                ),
-                                ft.Row(
-                                    controls=checkboxes,
-                                    spacing=2,
-                                    wrap=True,
-                                ),
-                            ],
-                            spacing=8,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            wrap=True,
-                        ),
+                        content=module_content,
                         padding=ft.Padding.symmetric(horizontal=8, vertical=5),
                         border_radius=8,
                         bgcolor=T.SURFACE,
@@ -479,29 +515,43 @@ class RolesView:
                 )
             )
 
+            permissions_title = ft.Text(
+                "Acceso por módulo",
+                color=T.TEXT_SECONDARY,
+                size=13,
+                weight=ft.FontWeight.BOLD,
+            )
+            permissions_hint = ft.Text(
+                "Marca al menos un módulo",
+                color=T.TEXT_SUBTLE,
+                size=10,
+            )
+            permissions_header = (
+                ft.Column(
+                    controls=[permissions_title, permissions_hint],
+                    spacing=0,
+                )
+                if dialog_width < 420
+                else ft.Row(
+                    controls=[permissions_title, permissions_hint],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                )
+            )
+
             permissions_box = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Row(
+                        permissions_header,
+                        ft.Column(
                             controls=[
-                                ft.Text(
-                                    "Acceso por módulo",
-                                    color=T.TEXT_SECONDARY,
-                                    size=13,
-                                    weight=ft.FontWeight.BOLD,
-                                ),
-                                ft.Text(
-                                    "Marca al menos un módulo",
-                                    color=T.TEXT_SUBTLE,
-                                    size=10,
-                                ),
+                                ft.Row(controls=row, spacing=4)
+                                for row in _chunk(
+                                    preset_buttons,
+                                    2 if dialog_width < 420
+                                    else (3 if dialog_mobile else 4),
+                                )
                             ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        ),
-                        ft.Row(
-                            controls=preset_buttons,
                             spacing=4,
-                            wrap=True,
                         ),
                         ft.Text(
                             "No puedes quitarte a ti mismo el acceso a Roles "
@@ -513,8 +563,6 @@ class RolesView:
                         ft.Column(
                             controls=module_rows,
                             spacing=4,
-                            scroll=ft.ScrollMode.AUTO,
-                            height=330 if mobile else 390,
                         ),
                     ],
                     spacing=8,
@@ -567,6 +615,9 @@ class RolesView:
                     error_msg.visible = True
                     self.page.update()
 
+            page_height = getattr(self.page, "height", None) or 800
+            content_height = min(620, max(260, int(page_height) - 260))
+
             dialog = ft.AlertDialog(
                 title=ft.Text(
                     "Editar Rol y Permisos" if is_edit else "Nuevo Rol",
@@ -583,8 +634,10 @@ class RolesView:
                         ],
                         spacing=12,
                         tight=True,
+                        scroll=ft.ScrollMode.AUTO,
+                        height=content_height,
                     ),
-                    width=wide_dialog_width(self.page, 860),
+                    width=dialog_width,
                 ),
                 actions=[
                     ft.TextButton(
