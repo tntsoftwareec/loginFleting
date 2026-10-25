@@ -15,6 +15,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 import qrcode
 
 from core.paths import ASSETS_DIR, GENERATED_DIR
+from app.services.sri_catalogs import etiqueta_forma_pago
 
 # ── Colores RIDE SRI ──────────────────────────────────────────────────────────
 C_BORDER     = colors.HexColor('#000000')
@@ -57,6 +58,21 @@ def _quotation_image(image_path: str, max_width: float, max_height: float):
         return None
 
 
+def _tipo_identificacion_label(tipo_doc: str, identificacion: str) -> str:
+    """Etiqueta legible del tipo de identificación para el RIDE."""
+    ident = str(identificacion or "").strip()
+    tipo = str(tipo_doc or "").strip().upper()
+    if ident == "9999999999999" or "CONSUMIDOR" in tipo:
+        return "Consumidor Final"
+    if "PASAPORTE" in tipo:
+        return "Pasaporte"
+    if "RUC" in tipo or len(ident) == 13:
+        return "RUC"
+    if "CEDULA" in tipo or "CÉDULA" in tipo or len(ident) == 10:
+        return "Cédula"
+    return str(tipo_doc or "").strip() or "—"
+
+
 def _company_logo_image(company_info: dict):
     """Devuelve el logo configurado o el logo predeterminado de la app."""
     stored = str((company_info or {}).get("logo_path") or "").strip()
@@ -88,9 +104,16 @@ class PDFService:
         company_info: dict,
         invoice_data: dict,
         items: list,
-        clave_acceso: str
+        clave_acceso: str,
+        autorizacion: dict | None = None,
     ) -> str:
-        """Genera el RIDE PDF de la Factura Electronica conforme al estandar SRI Ecuador."""
+        """Genera el RIDE PDF de la Factura Electronica conforme al estandar SRI Ecuador.
+
+        ``autorizacion`` es el resultado del SRI (``numero``/``fecha`` o
+        ``numero_autorizacion``/``fecha_autorizacion``). Si no se ha autorizado
+        el comprobante, el RIDE se marca como pendiente en lugar de mostrar la
+        clave de acceso como si fuera el número de autorización.
+        """
         pdf_dir = GENERATED_DIR / "invoices" / "pdf"
         pdf_dir.mkdir(parents=True, exist_ok=True)
         pdf_file = pdf_dir / f"FAC_{clave_acceso}.pdf"
@@ -123,7 +146,9 @@ class PDFService:
         st_total_val      = s('total_val', fontSize=7.5, leading=9,  fontName='Helvetica-Bold', alignment=TA_RIGHT)
         st_vtotal_lbl     = s('vt_lbl',    fontSize=9,  leading=11, fontName='Helvetica-Bold', textColor=C_BLUE_SRI)
         st_vtotal_val     = s('vt_val',    fontSize=9,  leading=11, fontName='Helvetica-Bold', alignment=TA_RIGHT, textColor=C_BLUE_SRI)
-        st_ca             = s('ca',        fontSize=6,  leading=7.5, alignment=TA_CENTER, textColor=colors.HexColor('#333333'))
+        st_ca             = s('ca',        fontSize=7,  leading=9, fontName='Courier', alignment=TA_CENTER, textColor=colors.HexColor('#333333'))
+        st_ca_digits      = s('ca_digits', fontSize=8.5, leading=10.5, fontName='Courier', alignment=TA_CENTER, textColor=colors.HexColor('#111111'))
+        st_footer         = s('footer',    fontSize=7,  leading=9, alignment=TA_CENTER, textColor=colors.HexColor('#555555'))
         st_section        = s('section',   fontSize=8.5, leading=11, fontName='Helvetica-Bold', textColor=C_BLUE_SRI)
 
         elements = []
@@ -134,7 +159,9 @@ class PDFService:
         razon_social     = company_info.get('razon_social', 'EMPRESA S.A.')
         nombre_comercial = company_info.get('nombre_comercial', razon_social)
         dir_matriz       = company_info.get('direccion_matriz', '')
-        dir_estab        = company_info.get('direccion_establecimiento', dir_matriz)
+        dir_estab        = (
+            company_info.get('direccion_establecimiento') or dir_matriz or ''
+        )
         ruc              = company_info.get('ruc', '')
         contrib_esp      = (company_info.get('contribuyente_especial') or '').strip()
         obliga_cont      = company_info.get('obligado_contabilidad', 'NO')
@@ -162,19 +189,53 @@ class PDFService:
             left_cell.append(
                 Paragraph(f'<b>Contribuyente Especial N.</b> {contrib_esp}', st_body)
             )
+        agente_retencion = str(company_info.get('agente_retencion') or '').strip()
+        if agente_retencion:
+            left_cell.append(
+                Paragraph(f'<b>Agente de Retencion N.</b> {agente_retencion}', st_body)
+            )
         left_cell += [
             Paragraph(f'<b>Obligado a llevar Contabilidad:</b> {obliga_cont}', st_body),
             Paragraph(f'<b>Telefono:</b> {telefono}   <b>Email:</b> {email_emp}', st_body),
         ]
+
+        # Datos de autorización del SRI. La clave de acceso NO es el número de
+        # autorización: este último solo existe cuando el comprobante fue
+        # autorizado. Se aceptan ambos nombres de claves por compatibilidad.
+        aut = autorizacion or {}
+        numero_autorizacion = str(
+            aut.get('numero')
+            or aut.get('numero_autorizacion')
+            or invoice_data.get('numero_autorizacion')
+            or ''
+        ).strip()
+        fecha_autorizacion = str(
+            aut.get('fecha')
+            or aut.get('fecha_autorizacion')
+            or invoice_data.get('fecha_autorizacion')
+            or ''
+        ).strip()
+        estado_sri = str(
+            aut.get('estado') or invoice_data.get('estado_sri') or ''
+        ).strip().upper()
+        autorizado = bool(numero_autorizacion) or estado_sri == 'AUTORIZADO'
+        if autorizado:
+            numero_txt = numero_autorizacion or clave_acceso
+            fecha_aut_txt = fecha_autorizacion or '—'
+        else:
+            numero_txt = 'PENDIENTE DE AUTORIZACION'
+            fecha_aut_txt = 'PENDIENTE DE AUTORIZACION'
 
         right_cell = [
             Paragraph(f'R.U.C.: {ruc}', st_label_c),
             Paragraph('FACTURA', st_doc_title),
             Paragraph(f'No. {secuencial}', st_label_c),
             Spacer(1, 2 * mm),
-            Paragraph('NUMERO DE AUTORIZACION', st_label_c),
+            Paragraph('CLAVE DE ACCESO', st_label_c),
             Paragraph(clave_acceso, st_ca),
-            Paragraph(f'<b>Fecha y Hora de Autorizacion:</b> {fecha_emision}', st_body_c),
+            Spacer(1, 1 * mm),
+            Paragraph(f'<b>Numero de Autorizacion:</b><br/>{numero_txt}', st_body_c),
+            Paragraph(f'<b>Fecha y Hora de Autorizacion:</b><br/>{fecha_aut_txt}', st_body_c),
             Paragraph(f'<b>Ambiente:</b> {amb_str}', st_body_c),
             Paragraph('<b>Emision:</b> NORMAL', st_body_c),
         ]
@@ -200,7 +261,7 @@ class PDFService:
         client_ident = invoice_data.get('client_identificacion', '9999999999999')
         client_dir   = invoice_data.get('client_direccion', 'Ciudad')
         client_email = invoice_data.get('client_email', '')
-        forma_pago   = invoice_data.get('forma_pago', 'EFECTIVO')
+        forma_pago   = etiqueta_forma_pago(invoice_data.get('forma_pago', 'EFECTIVO'))
         tipo_doc     = invoice_data.get('client_tipo_doc', 'CEDULA')
 
         elements.append(Paragraph('DATOS DEL COMPRADOR / CLIENTE', st_section))
@@ -211,32 +272,17 @@ class PDFService:
         c3 = PAGE_W * 0.18
         c4 = PAGE_W * 0.22
 
-        # Código de barras con el número de identificación
-        barcode_ident = Paragraph('', st_body)
-        if client_ident:
-            try:
-                barcode_ident = code128.Code128(
-                    client_ident,
-                    barWidth=0.012 * cm,
-                    barHeight=0.8 * cm,
-                    humanReadable=False,
-                )
-            except Exception:
-                barcode_ident = Paragraph('', st_body)
+        tipo_doc_label = _tipo_identificacion_label(tipo_doc, client_ident)
 
         buyer_rows = [
             [Paragraph('<b>Razon Social / Nombres:</b>', st_label),
              Paragraph(client_name, st_body),
              Paragraph('<b>Identificacion:</b>', st_label),
-             barcode_ident],
-            [Paragraph('', st_body),
-             Paragraph('', st_body),
-             Paragraph('', st_body),
              Paragraph(client_ident, st_body)],
             [Paragraph('<b>Direccion:</b>', st_label),
              Paragraph(client_dir, st_body),
              Paragraph('<b>Tipo Identificacion:</b>', st_label),
-             Paragraph(tipo_doc, st_body)],
+             Paragraph(tipo_doc_label, st_body)],
             [Paragraph('<b>Email:</b>', st_label),
              Paragraph(client_email, st_body),
              Paragraph('<b>Forma de Pago:</b>', st_label),
@@ -256,34 +302,38 @@ class PDFService:
         # 3. DETALLE DE PRODUCTOS / SERVICIOS
         # ══════════════════════════════════════════════════════════════════════
         cw = [
-            PAGE_W * 0.10,
             PAGE_W * 0.08,
+            PAGE_W * 0.07,
             PAGE_W * 0.06,
             PAGE_W * 0.07,
-            PAGE_W * 0.31,
-            PAGE_W * 0.12,
+            PAGE_W * 0.29,
             PAGE_W * 0.11,
+            PAGE_W * 0.09,
+            PAGE_W * 0.08,
             PAGE_W * 0.15,
         ]
         detail_data = [[
             Paragraph('Cod.\nPrincipal', st_th),
             Paragraph('Cod.\nAuxiliar',  st_th),
-            Paragraph('Cant.',           st_th),
-            Paragraph('Unidad\nMedida',  st_th),
-            Paragraph('Descripcion',     st_th),
-            Paragraph('Precio\nUnitario', st_th),
-            Paragraph('Descuento',       st_th),
+            Paragraph('Cant.',             st_th),
+            Paragraph('Unidad',            st_th),
+            Paragraph('Descripcion',       st_th),
+            Paragraph('Precio\nUnitario',  st_th),
+            Paragraph('Descuento',         st_th),
+            Paragraph('ICE',               st_th),
             Paragraph('Precio Total\nS/Imp.', st_th),
         ]]
         for item in items:
+            unidad = str(item.get('unidad_medida') or 'UNIDAD').strip().upper()
             detail_data.append([
                 Paragraph(str(item.get('codigo', '')),                    st_td),
-                Paragraph('',                                              st_td),
+                Paragraph(str(item.get('codigo_auxiliar', '') or ''),     st_td),
                 Paragraph(f"{float(item.get('cantidad', 1)):.2f}",        st_td_c),
-                Paragraph('UNIDAD',                                        st_td_c),
+                Paragraph(unidad,                                          st_td_c),
                 Paragraph(str(item.get('descripcion', '')),                st_td),
                 Paragraph(f"${float(item.get('precio_unitario', 0)):.2f}", st_td_r),
                 Paragraph(f"${float(item.get('descuento', 0)):.2f}",       st_td_r),
+                Paragraph(f"${float(item.get('valor_ice', 0)):.2f}",       st_td_r),
                 Paragraph(f"${float(item.get('subtotal', 0)):.2f}",        st_td_r),
             ])
 
@@ -308,13 +358,18 @@ class PDFService:
         tot_15      = float(invoice_data.get('subtotal_15', 0))
         tot_desc    = float(invoice_data.get('total_descuento', 0))
         iva_val     = float(invoice_data.get('iva_total', 0))
+        ice_val     = float(invoice_data.get('ice_total', 0))
+        propina_val = float(invoice_data.get('propina', 0))
         imp_total   = float(invoice_data.get('importe_total', 0))
 
-        # QR
+        # QR: URL de verificación del SRI con la clave de acceso.
         qr_element = Paragraph('<b>[ QR ]</b>', st_body_c)
         try:
             qr = qrcode.QRCode(version=1, box_size=3, border=1)
-            qr.add_data(clave_acceso)
+            qr.add_data(
+                'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/'
+                f'publico/validezComprobantes.jsf?claveAcceso={clave_acceso}'
+            )
             qr.make(fit=True)
             img_qr = qr.make_image(fill_color='black', back_color='white')
             buf = io.BytesIO()
@@ -341,11 +396,16 @@ class PDFService:
         ]))
 
         left_bottom = Table(
-            [[info_tbl], [Spacer(1, 2 * mm)], [qr_element]],
+            [
+                [info_tbl],
+                [Spacer(1, 2 * mm)],
+                [qr_element],
+                [Paragraph('Codigo QR de verificacion SRI', st_footer)],
+            ],
             colWidths=[PAGE_W * 0.40],
         )
         left_bottom.setStyle(TableStyle([
-            ('ALIGN',  (0, 2), (0, 2), 'CENTER'),
+            ('ALIGN',  (0, 2), (0, 3), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
 
@@ -362,9 +422,11 @@ class PDFService:
             tot_row('Subtotal IVA 15%:', tot_15),
             tot_row('Total Descuentos:', tot_desc),
             tot_row('IVA 15%:', iva_val),
-            tot_row('ICE:', 0.0),
-            tot_row('VALOR TOTAL:', imp_total, is_grand=True),
+            tot_row('ICE:', ice_val),
         ]
+        if propina_val > 0:
+            totals_data.append(tot_row('Propina:', propina_val))
+        totals_data.append(tot_row('VALOR TOTAL:', imp_total, is_grand=True))
         tw_lbl = PAGE_W * 0.32
         tw_val = PAGE_W * 0.18
         totals_tbl = Table(totals_data, colWidths=[tw_lbl, tw_val])
@@ -395,30 +457,36 @@ class PDFService:
         # ══════════════════════════════════════════════════════════════════════
         barcode_el = Paragraph(f'<font size=6>{clave_acceso}</font>', st_ca)
         try:
-            bar_width = 0.016 * cm
+            bar_width = 0.02 * cm
             bc = code128.Code128(
                 clave_acceso,
                 barWidth=bar_width,
-                barHeight=1.2 * cm,
+                barHeight=1.4 * cm,
                 humanReadable=False,
+                quiet=True,
             )
             # Si el código es más ancho que la página, se reduce el ancho de barra
             if bc.width > PAGE_W:
                 bc = code128.Code128(
                     clave_acceso,
                     barWidth=bar_width * (PAGE_W / bc.width),
-                    barHeight=1.2 * cm,
+                    barHeight=1.4 * cm,
                     humanReadable=False,
+                    quiet=True,
                 )
             barcode_el = bc
         except Exception:
             pass
 
+        bc_label = (
+            'CLAVE DE ACCESO / NUMERO DE AUTORIZACION'
+            if autorizado else 'CLAVE DE ACCESO'
+        )
         bc_tbl = Table(
             [
-                [Paragraph('<b>CLAVE DE ACCESO / NUMERO DE AUTORIZACION</b>', st_label_c)],
+                [Paragraph(f'<b>{bc_label}</b>', st_label_c)],
                 [barcode_el],
-                [Paragraph(clave_acceso, st_ca)],
+                [Paragraph(clave_acceso, st_ca_digits)],
             ],
             colWidths=[PAGE_W],
         )
@@ -431,6 +499,14 @@ class PDFService:
             ('PADDING',    (0, 0), (-1, -1), 4),
         ]))
         elements.append(KeepTogether(bc_tbl))
+        elements.append(Spacer(1, 3 * mm))
+        elements.append(Paragraph(
+            'Este documento es una representacion impresa de un comprobante '
+            'electronico. Verifique su autenticidad en www.sri.gob.ec con la '
+            'clave de acceso.',
+            st_footer,
+        ))
+        elements.append(Paragraph('Generado por TntPos', st_footer))
 
         doc.build(elements)
         return str(pdf_file)
@@ -631,6 +707,7 @@ class PDFService:
         tot_15      = float(quotation_data.get('subtotal_15', 0))
         tot_desc    = float(quotation_data.get('total_descuento', 0))
         iva_val     = float(quotation_data.get('iva_total', 0))
+        ice_val     = float(quotation_data.get('ice_total', 0))
         imp_total   = float(quotation_data.get('importe_total', 0))
         notas       = quotation_data.get('notas', '')
 
@@ -663,6 +740,7 @@ class PDFService:
             tot_row('Subtotal IVA 15%:', tot_15),
             tot_row('Total Descuentos:', tot_desc),
             tot_row('IVA 15%:', iva_val),
+            tot_row('ICE:', ice_val),
             tot_row('VALOR TOTAL:', imp_total, is_grand=True),
         ]
         tw_lbl = PAGE_W * 0.30

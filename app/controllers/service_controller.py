@@ -1,4 +1,5 @@
 from app.models.service_model import ServiceModel
+from app.services.sri_catalogs import validar_ice
 
 class ServiceController:
     @classmethod
@@ -11,7 +12,7 @@ class ServiceController:
         return ServiceModel.find(service_id)
 
     @classmethod
-    def create(cls, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, iva_porcentaje: float = 15.0, categoria: str = "Servicios", status: str = "active"):
+    def create(cls, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, iva_porcentaje: float = 15.0, categoria: str = "Servicios", status: str = "active", ice_codigo: str = "", ice_porcentaje: float = 0.0):
         """Crea un nuevo servicio."""
         codigo = (codigo or "").strip().upper()
         nombre = (nombre or "").strip()
@@ -30,6 +31,11 @@ class ServiceController:
         if precio_flt < 0:
             return False, "El precio no puede ser negativo."
 
+        ice_ok, ice_value = validar_ice(ice_codigo, ice_porcentaje)
+        if not ice_ok:
+            return False, ice_value
+        ice_codigo_val, ice_flt = ice_value
+
         existing = ServiceModel.where(codigo=codigo)
         if existing:
             return False, f"Ya existe un servicio con el código '{codigo}'."
@@ -41,12 +47,14 @@ class ServiceController:
             precio=precio_flt,
             iva_porcentaje=iva_flt,
             categoria=categoria if categoria else "Servicios",
-            status=status if status in ("active", "inactive") else "active"
+            status=status if status in ("active", "inactive") else "active",
+            ice_codigo=ice_codigo_val,
+            ice_porcentaje=ice_flt,
         )
         return True, new_service
 
     @classmethod
-    def update(cls, service_id: int, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, iva_porcentaje: float = 15.0, categoria: str = "Servicios", status: str = "active"):
+    def update(cls, service_id: int, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, iva_porcentaje: float = 15.0, categoria: str = "Servicios", status: str = "active", ice_codigo: str = "", ice_porcentaje: float = 0.0):
         """Actualiza un servicio existente."""
         codigo = (codigo or "").strip().upper()
         nombre = (nombre or "").strip()
@@ -71,6 +79,11 @@ class ServiceController:
         except (ValueError, TypeError):
             return False, "Valores de precio o IVA inválidos."
 
+        ice_ok, ice_value = validar_ice(ice_codigo, ice_porcentaje)
+        if not ice_ok:
+            return False, ice_value
+        ice_codigo_val, ice_flt = ice_value
+
         existing = ServiceModel.where(codigo=codigo)
         if existing and int(existing[0]["id"]) != sid:
             return False, f"Ya existe otro servicio con el código '{codigo}'."
@@ -83,7 +96,9 @@ class ServiceController:
             precio=precio_flt,
             iva_porcentaje=iva_flt,
             categoria=categoria if categoria else "Servicios",
-            status=status if status in ("active", "inactive") else "active"
+            status=status if status in ("active", "inactive") else "active",
+            ice_codigo=ice_codigo_val,
+            ice_porcentaje=ice_flt,
         )
         return True, updated
 

@@ -10,6 +10,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 from core.paths import GENERATED_DIR
+from app.services.sri_catalogs import etiqueta_forma_pago
 
 HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
 HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -87,7 +88,10 @@ class ExcelService:
     @classmethod
     def export_facturas(cls, facturas):
         """Exporta listado de facturas a Excel."""
-        headers = ["N° Factura", "Fecha Emisión", "Cliente", "Identificación", "Forma Pago", "Subtotal", "IVA", "Total", "Estado"]
+        headers = [
+            "N° Factura", "Fecha Emisión", "Cliente", "Identificación",
+            "Forma Pago", "Subtotal", "IVA", "ICE", "Propina", "Total", "Estado",
+        ]
         rows = []
         for f in facturas:
             rows.append([
@@ -95,9 +99,11 @@ class ExcelService:
                 f.get("fecha_emision", ""),
                 f.get("client_nombre", ""),
                 f.get("client_identificacion", ""),
-                f.get("forma_pago", ""),
+                etiqueta_forma_pago(f.get("forma_pago", "")),
                 f.get("subtotal_sin_impuestos", 0),
                 f.get("iva_total", 0),
+                f.get("ice_total", 0),
+                f.get("propina", 0),
                 f.get("importe_total", 0),
                 f.get("estado", ""),
             ])

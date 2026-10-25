@@ -91,6 +91,7 @@ class QuotationNewView:
         txt_sub0 = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
         txt_desc = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
         txt_iva = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
+        txt_ice = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
         txt_total = ft.Text("$0.00", size=18, weight=ft.FontWeight.BOLD, color=T.SUCCESS_TEXT)
 
         tf_notas = ft.TextField(
@@ -243,6 +244,8 @@ class QuotationNewView:
                     "cantidad": 1,
                     "descuento": 0.0,
                     "iva_porcentaje": float(item.get("iva_porcentaje", 15.0)),
+                    "ice_codigo": str(item.get("ice_codigo") or ""),
+                    "ice_porcentaje": float(item.get("ice_porcentaje") or 0),
                     "imagen_path": item.get("imagen_path", "") if tipo == "producto" else "",
                 })
             render_cart()
@@ -301,8 +304,13 @@ class QuotationNewView:
                 price = item["precio"]
                 desc = item["descuento"]
                 sub = (qty * price) - desc
-                iva_val = (sub * (item["iva_porcentaje"] / 100.0)) if item["iva_porcentaje"] > 0 else 0.0
-                total_i = sub + iva_val
+                ice_p = float(item.get("ice_porcentaje") or 0)
+                ice_val = (sub * (ice_p / 100.0)) if ice_p > 0 else 0.0
+                iva_val = (
+                    ((sub + ice_val) * (item["iva_porcentaje"] / 100.0))
+                    if item["iva_porcentaje"] > 0 else 0.0
+                )
+                total_i = sub + iva_val + ice_val
 
                 row_cart = ft.Container(
                     content=ft.Row(
@@ -341,6 +349,7 @@ class QuotationNewView:
             sub0 = 0.0
             total_d = 0.0
             iva_t = 0.0
+            ice_t = 0.0
 
             for item in self.cart_items:
                 q = item["cantidad"]
@@ -348,19 +357,23 @@ class QuotationNewView:
                 d = item["descuento"]
                 sub = (q * p) - d
                 iva_p = item["iva_porcentaje"]
+                ice_p = float(item.get("ice_porcentaje") or 0)
 
                 total_d += d
+                ice_val = (sub * (ice_p / 100.0)) if ice_p > 0 else 0.0
                 if iva_p > 0:
                     sub15 += sub
-                    iva_t += sub * (iva_p / 100.0)
+                    iva_t += (sub + ice_val) * (iva_p / 100.0)
                 else:
                     sub0 += sub
+                ice_t += ice_val
 
             txt_sub15.value = f"${sub15:.2f}"
             txt_sub0.value = f"${sub0:.2f}"
             txt_desc.value = f"${total_d:.2f}"
             txt_iva.value = f"${iva_t:.2f}"
-            txt_total.value = f"${sub15 + sub0 + iva_t:.2f}"
+            txt_ice.value = f"${ice_t:.2f}"
+            txt_total.value = f"${sub15 + sub0 + iva_t + ice_t:.2f}"
 
         def open_quick_client_dialog():
             tf_ident = ft.TextField(label="Identificación / RUC", expand=True)
@@ -633,6 +646,7 @@ class QuotationNewView:
                             ft.Row([ft.Text("Subtotal 0%:", size=12, color=T.TEXT_MUTED), txt_sub0], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                             ft.Row([ft.Text("Total Descuento:", size=12, color=T.TEXT_MUTED), txt_desc], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                             ft.Row([ft.Text("Monto IVA (15%):", size=12, color=T.TEXT_MUTED), txt_iva], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                            ft.Row([ft.Text("ICE:", size=12, color=T.TEXT_MUTED), txt_ice], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                             ft.Divider(height=1, color=T.BORDER_STRONG),
                             ft.Row([ft.Text("TOTAL:", size=15, weight=ft.FontWeight.BOLD, color=T.TEXT), txt_total], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                         ],

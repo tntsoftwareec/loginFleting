@@ -5,6 +5,7 @@ from app.views.layouts.main_layout import MainLayout
 from app.controllers.invoice_controller import InvoiceController
 from app.views.components.import_export import build_import_export_bar
 from app.views.ui_helpers import is_mobile_page, open_path, stat_card
+from app.services.sri_catalogs import etiqueta_forma_pago
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
@@ -114,6 +115,7 @@ class InvoicesView:
             numero = result.get("numero_autorizacion") or inv.get("sri_autorizacion") or ""
             fecha = result.get("fecha_autorizacion") or inv.get("sri_fecha_autorizacion") or ""
             ambiente = result.get("ambiente") or ""
+            email_status = result.get("email_status") or ""
 
             detalles = [
                 ft.Row(
@@ -148,6 +150,14 @@ class InvoicesView:
             if fecha:
                 detalles.append(
                     ft.Text(f"Fecha autorización: {fecha}", size=11, color=T.TEXT)
+                )
+            if email_status:
+                detalles.append(
+                    ft.Text(
+                        f"Correo: {email_status}",
+                        size=11,
+                        color=T.TEXT_MUTED,
+                    )
                 )
 
             dlg = ft.AlertDialog(
@@ -254,6 +264,7 @@ class InvoicesView:
                             ft.DataCell(ft.Text(f"{float(item.get('cantidad', 1)):.2f}", size=12)),
                             ft.DataCell(ft.Text(f"${float(item.get('precio_unitario', 0)):.2f}", size=12)),
                             ft.DataCell(ft.Text(f"${float(item.get('subtotal', 0)):.2f}", size=12)),
+                            ft.DataCell(ft.Text(f"${float(item.get('valor_ice', 0)):.2f}", size=12)),
                         ]
                     )
                 )
@@ -265,6 +276,7 @@ class InvoicesView:
                     ft.DataColumn(ft.Text("CANTIDAD", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                     ft.DataColumn(ft.Text("PRECIO UNIT", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                     ft.DataColumn(ft.Text("SUBTOTAL", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                    ft.DataColumn(ft.Text("ICE", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                 ],
                 rows=items_table_rows,
                 column_spacing=15,
@@ -276,7 +288,12 @@ class InvoicesView:
                     content=ft.Column(
                         controls=[
                             ft.Text(f"Cliente: {inv['client_nombre']} ({inv['client_identificacion']})", size=13),
-                            ft.Text(f"Fecha: {inv['fecha_emision']} | Forma Pago: {inv['forma_pago']}", size=12, color=T.TEXT_MUTED),
+                            ft.Text(
+                                f"Fecha: {inv['fecha_emision']} | "
+                                f"Forma Pago: {etiqueta_forma_pago(inv.get('forma_pago', 'EFECTIVO'))}",
+                                size=12,
+                                color=T.TEXT_MUTED,
+                            ),
                             ft.Text(f"Clave de Acceso: {inv['clave_acceso']}", size=10, color=T.INFO_TEXT),
                             ft.Row(
                                 controls=[

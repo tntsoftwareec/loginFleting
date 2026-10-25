@@ -130,7 +130,7 @@ class CompanyController:
         return True, "Logo personalizado eliminado. Se usará el logo predeterminado."
 
     @classmethod
-    def update_info(cls, ruc: str, razon_social: str, nombre_comercial: str, direccion_matriz: str, telefono: str, email: str, ambiente_sri: int = 1, establecimiento: str = "001", punto_emision: str = "001", contribuyente_especial: str = "", obligado_contabilidad: str = "NO", sri_email: str = "recepcion.sri@sri.gob.ec", smtp_host: str = "smtp.gmail.com", smtp_port: int = 587, smtp_user: str = "", smtp_pass: str = "", smtp_ssl: bool = False, secuencial_factura: int = 1, secuencial_cotizacion: int = 1):
+    def update_info(cls, ruc: str, razon_social: str, nombre_comercial: str, direccion_matriz: str, telefono: str, email: str, ambiente_sri: int = 1, establecimiento: str = "001", punto_emision: str = "001", contribuyente_especial: str = "", obligado_contabilidad: str = "NO", sri_email: str = "recepcion.sri@sri.gob.ec", smtp_host: str = "smtp.gmail.com", smtp_port: int = 587, smtp_user: str = "", smtp_pass: str = "", smtp_ssl: bool = False, secuencial_factura: int = 1, secuencial_cotizacion: int = 1, direccion_establecimiento: str = "", agente_retencion: str = ""):
         """Actualiza los datos del negocio/empresa (smtp_pass se encripta antes de guardar)."""
         company = cls.get_info()
 
@@ -166,6 +166,8 @@ class CompanyController:
             razon_social=razon_social,
             nombre_comercial=(nombre_comercial or "").strip(),
             direccion_matriz=(direccion_matriz or "").strip(),
+            direccion_establecimiento=(direccion_establecimiento or "").strip(),
+            agente_retencion=(agente_retencion or "").strip(),
             telefono=(telefono or "").strip(),
             email=(email or "").strip(),
             ambiente_sri=int(ambiente_sri),

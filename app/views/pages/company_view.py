@@ -57,6 +57,20 @@ class CompanyView:
         tf_razon = ft.TextField(label="Razón Social", value=self.company_info.get("razon_social", "MI EMPRESA"), expand=True)
         tf_comercial = ft.TextField(label="Nombre Comercial", value=self.company_info.get("nombre_comercial", "MI NEGOCIO"), expand=True)
         tf_matriz = ft.TextField(label="Dirección Matriz", value=self.company_info.get("direccion_matriz", ""), multiline=True, max_lines=2, expand=True)
+        tf_dir_estab = ft.TextField(
+            label="Dirección del Establecimiento (opcional)",
+            value=self.company_info.get("direccion_establecimiento", ""),
+            hint_text="Si se deja vacía se usa la dirección matriz",
+            multiline=True,
+            max_lines=2,
+            expand=True,
+        )
+        tf_agente = ft.TextField(
+            label="N° de Agente de Retención (opcional)",
+            value=self.company_info.get("agente_retencion", ""),
+            hint_text="Número de resolución del SRI",
+            expand=True,
+        )
         tf_tel = ft.TextField(label="Teléfono Contacto", value=self.company_info.get("telefono", ""), expand=True)
         tf_email = ft.TextField(label="Email de la Empresa", value=self.company_info.get("email", ""), expand=True)
 
@@ -326,6 +340,8 @@ class CompanyView:
                 razon_social=tf_razon.value,
                 nombre_comercial=tf_comercial.value,
                 direccion_matriz=tf_matriz.value,
+                direccion_establecimiento=tf_dir_estab.value,
+                agente_retencion=tf_agente.value,
                 telefono=tf_tel.value,
                 email=tf_email.value,
                 ambiente_sri=dd_ambiente.value,
@@ -405,6 +421,8 @@ class CompanyView:
                     ft.Row([tf_ruc, tf_razon, tf_comercial], spacing=10),
                     ft.Row([tf_tel, tf_email], spacing=10),
                     tf_matriz,
+                    tf_dir_estab,
+                    tf_agente,
                 ],
                 spacing=12,
             ),

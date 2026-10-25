@@ -82,6 +82,35 @@ class MigrationsTest(unittest.TestCase):
         ):
             self.assertIn(column, invoice_cols)
 
+    def test_ride_improvement_columns(self):
+        company_cols = {
+            r[1] for r in self.conn.execute("PRAGMA table_info(company)").fetchall()
+        }
+        for column in ("direccion_establecimiento", "agente_retencion"):
+            self.assertIn(column, company_cols)
+
+        product_cols = {
+            r[1] for r in self.conn.execute("PRAGMA table_info(products)").fetchall()
+        }
+        service_cols = {
+            r[1] for r in self.conn.execute("PRAGMA table_info(services)").fetchall()
+        }
+        for column in ("ice_codigo", "ice_porcentaje"):
+            self.assertIn(column, product_cols)
+            self.assertIn(column, service_cols)
+
+        invoice_cols = {
+            r[1] for r in self.conn.execute("PRAGMA table_info(invoices)").fetchall()
+        }
+        for column in ("ice_total", "propina"):
+            self.assertIn(column, invoice_cols)
+
+        item_cols = {
+            r[1] for r in self.conn.execute("PRAGMA table_info(invoice_items)").fetchall()
+        }
+        for column in ("ice_codigo", "ice_porcentaje", "valor_ice"):
+            self.assertIn(column, item_cols)
+
     def test_seeds_create_only_initial_admin_and_company(self):
         users = self.conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         clients = self.conn.execute("SELECT COUNT(*) FROM clients").fetchone()[0]

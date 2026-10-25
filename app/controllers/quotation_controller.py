@@ -8,6 +8,11 @@ from app.models.client_model import ClientModel
 from app.models.product_model import ProductModel
 from app.services.pdf_service import PDFService
 from app.services.email_service import EmailService
+from app.services.sri_catalogs import (
+    calcular_totales_linea,
+    es_forma_pago_valida,
+    normalizar_forma_pago,
+)
 from core.database import transaction
 from core.logger import get_logger
 
@@ -88,6 +93,7 @@ class QuotationController:
         subtotal_sin_impuestos = 0.0
         total_descuento = 0.0
         iva_total = 0.0
+        ice_total = 0.0
 
         processed_items = []
 
@@ -104,16 +110,26 @@ class QuotationController:
             if cantidad <= 0:
                 return False, f"La cantidad para '{descripcion}' debe ser mayor a cero."
 
-            subtotal_item = (cantidad * precio_unitario) - descuento
-            if subtotal_item < 0:
-                subtotal_item = 0.0
+            try:
+                line = calcular_totales_linea(
+                    cantidad,
+                    precio_unitario,
+                    descuento,
+                    iva_p,
+                    item.get("ice_codigo", ""),
+                    item.get("ice_porcentaje", 0.0),
+                )
+            except ValueError as exc:
+                return False, f"ICE de '{descripcion}': {exc}"
 
-            valor_iva = (subtotal_item * (iva_p / 100.0)) if iva_p > 0 else 0.0
-            total_item = subtotal_item + valor_iva
+            subtotal_item = line["subtotal"]
+            valor_iva = line["valor_iva"]
+            valor_ice = line["valor_ice"]
 
             subtotal_sin_impuestos += subtotal_item
             total_descuento += descuento
             iva_total += valor_iva
+            ice_total += valor_ice
 
             if iva_p > 0:
                 subtotal_15 += subtotal_item
@@ -131,14 +147,17 @@ class QuotationController:
                 "subtotal": subtotal_item,
                 "iva_porcentaje": iva_p,
                 "valor_iva": valor_iva,
-                "total": total_item,
+                "ice_codigo": line["ice_codigo"],
+                "ice_porcentaje": line["ice_porcentaje"],
+                "valor_ice": valor_ice,
+                "total": line["total"],
                 "imagen_path": item.get("imagen_path", "") if tipo == "producto" else "",
             })
 
         # Incluye la imagen del producto en el PDF de la cotización.
         processed_items = cls._with_product_images(processed_items)
 
-        importe_total = subtotal_sin_impuestos + iva_total
+        importe_total = subtotal_sin_impuestos + iva_total + ice_total
 
         quotation_data = {
             "secuencial": secuencial_str,
@@ -153,6 +172,7 @@ class QuotationController:
             "subtotal_sin_impuestos": subtotal_sin_impuestos,
             "total_descuento": total_descuento,
             "iva_total": iva_total,
+            "ice_total": ice_total,
             "importe_total": importe_total,
             "notas": notas,
         }
@@ -176,6 +196,7 @@ class QuotationController:
                 subtotal_sin_impuestos=subtotal_sin_impuestos,
                 total_descuento=total_descuento,
                 iva_total=iva_total,
+                ice_total=ice_total,
                 importe_total=importe_total,
                 estado="EMITIDA",
                 pdf_path=pdf_path,
@@ -198,6 +219,9 @@ class QuotationController:
                     subtotal=pit["subtotal"],
                     iva_porcentaje=pit["iva_porcentaje"],
                     valor_iva=pit["valor_iva"],
+                    ice_codigo=pit["ice_codigo"],
+                    ice_porcentaje=pit["ice_porcentaje"],
+                    valor_ice=pit["valor_ice"],
                     total=pit["total"]
                 )
 
@@ -265,6 +289,7 @@ class QuotationController:
             "subtotal_sin_impuestos": quot.get("subtotal_sin_impuestos", 0),
             "total_descuento": quot.get("total_descuento", 0),
             "iva_total": quot.get("iva_total", 0),
+            "ice_total": quot.get("ice_total", 0),
             "importe_total": quot.get("importe_total", 0),
             "notas": quot.get("notas", ""),
         }
@@ -346,10 +371,12 @@ class QuotationController:
                 "cantidad": cantidad,
                 "descuento": float(item.get("descuento") or 0),
                 "iva_porcentaje": float(item.get("iva_porcentaje") or 0),
+                "ice_codigo": str(item.get("ice_codigo") or ""),
+                "ice_porcentaje": float(item.get("ice_porcentaje") or 0),
             })
 
-        forma_pago = (forma_pago or "EFECTIVO").strip().upper()
-        if forma_pago not in ("EFECTIVO", "TARJETA", "TRANSFERENCIA"):
+        forma_pago = normalizar_forma_pago(forma_pago)
+        if not es_forma_pago_valida(forma_pago):
             forma_pago = "EFECTIVO"
 
         # Importación local para mantener desacoplados ambos controladores.

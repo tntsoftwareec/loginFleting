@@ -6,6 +6,7 @@ from xml.dom import minidom
 from pathlib import Path
 
 from core.paths import GENERATED_DIR
+from app.services.sri_catalogs import codigo_forma_pago
 
 class XMLService:
     @staticmethod
@@ -105,11 +106,19 @@ class XMLService:
         ET.SubElement(info_trib, "ptoEmi").text = str(company_info.get("punto_emision", "001")).zfill(3)
         ET.SubElement(info_trib, "secuencial").text = sec_str.zfill(9)
         ET.SubElement(info_trib, "dirMatriz").text = company_info.get("direccion_matriz", "Dirección Principal")
+        agente_retencion = str(company_info.get("agente_retencion") or "").strip()
+        if agente_retencion:
+            ET.SubElement(info_trib, "agenteRetencion").text = agente_retencion
 
         # --- InfoFactura ---
         info_fac = ET.SubElement(root, "infoFactura")
         ET.SubElement(info_fac, "fechaEmision").text = fecha_dt.strftime("%d/%m/%Y")
-        ET.SubElement(info_fac, "dirEstablecimiento").text = company_info.get("direccion_matriz", "Dirección Principal")
+        dir_establecimiento = (
+            company_info.get("direccion_establecimiento")
+            or company_info.get("direccion_matriz")
+            or "Dirección Principal"
+        )
+        ET.SubElement(info_fac, "dirEstablecimiento").text = dir_establecimiento
         if company_info.get("contribuyente_especial"):
             ET.SubElement(info_fac, "contribuyenteEspecial").text = company_info.get("contribuyente_especial")
         ET.SubElement(info_fac, "obligadoContabilidad").text = company_info.get("obligado_contabilidad", "NO").upper()
@@ -127,33 +136,62 @@ class XMLService:
 
         # TotalConImpuestos
         tot_imp = ET.SubElement(info_fac, "totalConImpuestos")
-        
+
+        # ICE: se agrupa por código y tarifa, tal como exige el SRI.
+        ice_groups = {}
+        for item in items:
+            ice_codigo = str(item.get("ice_codigo") or "").strip()
+            ice_p = float(item.get("ice_porcentaje") or 0)
+            ice_val = float(item.get("valor_ice") or 0)
+            if not ice_codigo or ice_p <= 0 or ice_val <= 0:
+                continue
+            group = ice_groups.setdefault(ice_codigo, {"base": 0.0, "valor": 0.0})
+            group["base"] += float(item.get("subtotal") or 0)
+            group["valor"] += ice_val
+
+        for ice_codigo, group in ice_groups.items():
+            imp_ice = ET.SubElement(tot_imp, "totalImpuesto")
+            ET.SubElement(imp_ice, "codigo").text = "3"
+            ET.SubElement(imp_ice, "codigoPorcentaje").text = ice_codigo
+            ET.SubElement(imp_ice, "baseImponible").text = f"{group['base']:.2f}"
+            ET.SubElement(imp_ice, "valor").text = f"{group['valor']:.2f}"
+
+        # La base del IVA incluye el ICE. Se calcula desde los ítems para no
+        # depender de cómo se haya almacenado el subtotal en la factura.
+        iva_base_15 = 0.0
+        iva_base_0 = 0.0
+        for item in items:
+            base = float(item.get("subtotal") or 0) + float(item.get("valor_ice") or 0)
+            if float(item.get("iva_porcentaje") or 0) > 0:
+                iva_base_15 += base
+            else:
+                iva_base_0 += base
+
         # Impuesto IVA 15% (o tarifa aplicada)
-        if invoice_data.get("subtotal_15", 0) > 0:
+        if iva_base_15 > 0:
             imp15 = ET.SubElement(tot_imp, "totalImpuesto")
             ET.SubElement(imp15, "codigo").text = "2"
             ET.SubElement(imp15, "codigoPorcentaje").text = "4"  # 15% SRI
-            ET.SubElement(imp15, "baseImponible").text = f"{invoice_data.get('subtotal_15', 0.0):.2f}"
+            ET.SubElement(imp15, "baseImponible").text = f"{iva_base_15:.2f}"
             ET.SubElement(imp15, "valor").text = f"{invoice_data.get('iva_total', 0.0):.2f}"
-            
-        if invoice_data.get("subtotal_0", 0) > 0 or invoice_data.get("subtotal_15", 0) == 0:
+
+        if iva_base_0 > 0 or iva_base_15 == 0:
             imp0 = ET.SubElement(tot_imp, "totalImpuesto")
             ET.SubElement(imp0, "codigo").text = "2"
             ET.SubElement(imp0, "codigoPorcentaje").text = "0"  # 0% SRI
-            ET.SubElement(imp0, "baseImponible").text = f"{invoice_data.get('subtotal_0', 0.0):.2f}"
+            ET.SubElement(imp0, "baseImponible").text = f"{iva_base_0:.2f}"
             ET.SubElement(imp0, "valor").text = "0.00"
 
-        ET.SubElement(info_fac, "propina").text = "0.00"
+        ET.SubElement(info_fac, "propina").text = f"{float(invoice_data.get('propina') or 0):.2f}"
         ET.SubElement(info_fac, "importeTotal").text = f"{invoice_data.get('importe_total', 0.0):.2f}"
         ET.SubElement(info_fac, "moneda").text = "DOLAR"
 
         # Pagos
         pagos = ET.SubElement(info_fac, "pagos")
         pago = ET.SubElement(pagos, "pago")
-        # Codigo 01 = Sin utilización del sistema financiero (Efectivo), 20 = Otros
-        forma = invoice_data.get("forma_pago", "EFECTIVO").upper()
-        cod_pago = "01" if "EFECTIVO" in forma else "20"
-        ET.SubElement(pago, "formaPago").text = cod_pago
+        ET.SubElement(pago, "formaPago").text = codigo_forma_pago(
+            invoice_data.get("forma_pago", "EFECTIVO")
+        )
         ET.SubElement(pago, "total").text = f"{invoice_data.get('importe_total', 0.0):.2f}"
 
         # --- Detalles ---
@@ -168,12 +206,26 @@ class XMLService:
             ET.SubElement(det, "precioTotalSinImpuesto").text = f"{item.get('subtotal', 0.0):.2f}"
 
             imps = ET.SubElement(det, "impuestos")
+
+            ice_codigo = str(item.get("ice_codigo") or "").strip()
+            ice_p = float(item.get("ice_porcentaje") or 0)
+            ice_val = float(item.get("valor_ice") or 0)
+            if ice_codigo and ice_p > 0:
+                imp_ice = ET.SubElement(imps, "impuesto")
+                ET.SubElement(imp_ice, "codigo").text = "3"
+                ET.SubElement(imp_ice, "codigoPorcentaje").text = ice_codigo
+                ET.SubElement(imp_ice, "tarifa").text = f"{ice_p:.2f}"
+                ET.SubElement(imp_ice, "baseImponible").text = f"{item.get('subtotal', 0.0):.2f}"
+                ET.SubElement(imp_ice, "valor").text = f"{ice_val:.2f}"
+
             imp = ET.SubElement(imps, "impuesto")
             ET.SubElement(imp, "codigo").text = "2"
             iva_p = float(item.get("iva_porcentaje", 15.0))
             ET.SubElement(imp, "codigoPorcentaje").text = "4" if iva_p > 0 else "0"
             ET.SubElement(imp, "tarifa").text = f"{iva_p:.2f}"
-            ET.SubElement(imp, "baseImponible").text = f"{item.get('subtotal', 0.0):.2f}"
+            ET.SubElement(imp, "baseImponible").text = (
+                f"{float(item.get('subtotal') or 0) + float(item.get('valor_ice') or 0):.2f}"
+            )
             ET.SubElement(imp, "valor").text = f"{item.get('valor_iva', 0.0):.2f}"
 
         # Formatting XML string

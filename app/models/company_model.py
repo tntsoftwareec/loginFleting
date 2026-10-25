@@ -12,6 +12,8 @@ class CompanyModel(BaseModel):
                 razon_social="MI EMPRESA",
                 nombre_comercial="MI NEGOCIO",
                 direccion_matriz="",
+                direccion_establecimiento="",
+                agente_retencion="",
                 telefono="",
                 email="",
                 ambiente_sri=1,

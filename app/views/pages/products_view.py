@@ -231,6 +231,11 @@ class ProductsView:
                             ft.DataCell(ft.Text(f"${float(p.get('costo', 0.0)):.2f}", size=12, color=T.TEXT_MUTED)),
                             ft.DataCell(stock_chip),
                             ft.DataCell(ft.Text(f"{float(p.get('iva_porcentaje', 15.0)):.0f}%", size=12)),
+                            ft.DataCell(ft.Text(
+                                f"{float(p.get('ice_porcentaje') or 0):.0f}%"
+                                if float(p.get('ice_porcentaje') or 0) > 0 else "—",
+                                size=12,
+                            )),
                             ft.DataCell(actions),
                         ]
                     )
@@ -261,6 +266,14 @@ class ProductsView:
                                         ft.Text(f"Venta: ${float(p['precio']):.2f}", size=13, weight=ft.FontWeight.BOLD, color=T.SUCCESS_TEXT),
                                         ft.Text(f"Costo: ${float(p.get('costo', 0.0)):.2f}", size=12, color=T.TEXT_MUTED),
                                         ft.Text(f"IVA {float(p.get('iva_porcentaje', 15.0)):.0f}%", size=12, color=T.TEXT_SECONDARY),
+                                        *(
+                                            [ft.Text(
+                                                f"ICE {float(p.get('ice_porcentaje') or 0):.0f}%",
+                                                size=12,
+                                                color=T.WARNING,
+                                            )]
+                                            if float(p.get('ice_porcentaje') or 0) > 0 else []
+                                        ),
                                     ],
                                     spacing=12,
                                 ),
@@ -290,6 +303,7 @@ class ProductsView:
                         ft.DataColumn(ft.Text("COSTO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                         ft.DataColumn(ft.Text("STOCK", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                         ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("ICE", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                         ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                     ],
                     rows=rows,
@@ -375,6 +389,18 @@ class ProductsView:
                     ft.dropdown.Option("15", "IVA 15%"),
                     ft.dropdown.Option("0", "IVA 0%"),
                 ],
+                expand=True,
+            )
+            tf_ice_codigo = ft.TextField(
+                label="Código ICE SRI (opcional)",
+                value=str(prod.get("ice_codigo") or "") if is_edit else "",
+                hint_text="Ej: 3031",
+                expand=True,
+            )
+            tf_ice_pct = ft.TextField(
+                label="Tarifa ICE %",
+                value=str(float(prod.get("ice_porcentaje") or 0)) if is_edit else "0",
+                hint_text="0 = sin ICE",
                 expand=True,
             )
             tf_desc = ft.TextField(
@@ -488,6 +514,8 @@ class ProductsView:
                 stock = tf_stk.value
                 stock_minimo = tf_min.value
                 iva = tf_iva.value
+                ice_codigo = tf_ice_codigo.value
+                ice_porcentaje = tf_ice_pct.value
                 desc = tf_desc.value
                 status = "active" if sw_status.value else "inactive"
                 supplier_id = dd_supplier.value
@@ -502,6 +530,8 @@ class ProductsView:
                         imagen_path=image_arg,
                         stock_minimo=stock_minimo,
                         supplier_id=supplier_id,
+                        ice_codigo=ice_codigo,
+                        ice_porcentaje=ice_porcentaje,
                     )
                 else:
                     success, res = ProductController.create(
@@ -509,6 +539,8 @@ class ProductsView:
                         imagen_path=selected_image["path"],
                         stock_minimo=stock_minimo,
                         supplier_id=supplier_id,
+                        ice_codigo=ice_codigo,
+                        ice_porcentaje=ice_porcentaje,
                     )
 
                 if success:
@@ -529,6 +561,13 @@ class ProductsView:
                             ft.Row([tf_nom, dd_supplier], spacing=10),
                             ft.Row([tf_prec, tf_cost], spacing=10),
                             ft.Row([tf_stk, tf_min, tf_iva], spacing=10),
+                            ft.Row([tf_ice_codigo, tf_ice_pct], spacing=10),
+                            ft.Text(
+                                "El ICE solo aplica a bienes gravados con este impuesto. "
+                                "Use el código de 4 dígitos del catálogo del SRI.",
+                                size=10,
+                                color=T.TEXT_MUTED,
+                            ),
                             tf_desc,
                             ft.Row(
                                 controls=[

@@ -6,6 +6,7 @@ from pathlib import Path
 from app.controllers.inventory_controller import InventoryController
 from app.models.product_model import ProductModel
 from app.models.supplier_model import SupplierModel
+from app.services.sri_catalogs import validar_ice
 from core.database import transaction
 from core.paths import GENERATED_DIR
 
@@ -116,7 +117,7 @@ class ProductController:
         return True, sid
 
     @classmethod
-    def create(cls, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, costo: float = 0.0, stock: int = 0, iva_porcentaje: float = 15.0, categoria: str = "General", status: str = "active", imagen_path: str = "", stock_minimo: int = 5, supplier_id=None):
+    def create(cls, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, costo: float = 0.0, stock: int = 0, iva_porcentaje: float = 15.0, categoria: str = "General", status: str = "active", imagen_path: str = "", stock_minimo: int = 5, supplier_id=None, ice_codigo: str = "", ice_porcentaje: float = 0.0):
         """Crea un nuevo producto."""
         codigo = (codigo or "").strip().upper()
         nombre = (nombre or "").strip()
@@ -147,6 +148,11 @@ class ProductController:
         if stock_minimo_int < 0:
             return False, "El stock mínimo no puede ser negativo."
 
+        ice_ok, ice_value = validar_ice(ice_codigo, ice_porcentaje)
+        if not ice_ok:
+            return False, ice_value
+        ice_codigo_val, ice_flt = ice_value
+
         existing = ProductModel.where(codigo=codigo)
         if existing:
             return False, f"Ya existe un producto con el código '{codigo}'."
@@ -170,6 +176,8 @@ class ProductController:
                     imagen_path=saved_image,
                     stock_minimo=stock_minimo_int,
                     supplier_id=supplier_value,
+                    ice_codigo=ice_codigo_val,
+                    ice_porcentaje=ice_flt,
                 )
                 if stock_int > 0:
                     InventoryController.log_stock_change(
@@ -186,7 +194,7 @@ class ProductController:
         return True, new_product
 
     @classmethod
-    def update(cls, product_id: int, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, costo: float = 0.0, stock: int = 0, iva_porcentaje: float = 15.0, categoria: str = "General", status: str = "active", imagen_path: str | None = None, stock_minimo: int | None = None, supplier_id=None):
+    def update(cls, product_id: int, codigo: str, nombre: str, descripcion: str = "", precio: float = 0.0, costo: float = 0.0, stock: int = 0, iva_porcentaje: float = 15.0, categoria: str = "General", status: str = "active", imagen_path: str | None = None, stock_minimo: int | None = None, supplier_id=None, ice_codigo: str = "", ice_porcentaje: float = 0.0):
         """Actualiza un producto existente.
 
         ``imagen_path=None`` conserva la imagen actual; una cadena vacía la
@@ -232,6 +240,11 @@ class ProductController:
         if stock_minimo_int < 0:
             return False, "El stock mínimo no puede ser negativo."
 
+        ice_ok, ice_value = validar_ice(ice_codigo, ice_porcentaje)
+        if not ice_ok:
+            return False, ice_value
+        ice_codigo_val, ice_flt = ice_value
+
         existing = ProductModel.where(codigo=codigo)
         if existing and int(existing[0]["id"]) != pid:
             return False, f"Ya existe otro producto con el código '{codigo}'."
@@ -266,6 +279,8 @@ class ProductController:
                     imagen_path=final_image,
                     stock_minimo=stock_minimo_int,
                     supplier_id=supplier_value,
+                    ice_codigo=ice_codigo_val,
+                    ice_porcentaje=ice_flt,
                 )
                 if old_stock != stock_int:
                     InventoryController.log_stock_change(

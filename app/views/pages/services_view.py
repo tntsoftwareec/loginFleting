@@ -200,6 +200,11 @@ class ServicesView:
                             ft.DataCell(ft.Text(s.get("categoria") or "Servicios", size=12)),
                             ft.DataCell(ft.Text(f"${float(s['precio']):.2f}", size=13, weight=ft.FontWeight.BOLD, color=T.SUCCESS_TEXT)),
                             ft.DataCell(ft.Text(f"{float(s.get('iva_porcentaje', 15.0)):.0f}%", size=12)),
+                            ft.DataCell(ft.Text(
+                                f"{float(s.get('ice_porcentaje') or 0):.0f}%"
+                                if float(s.get('ice_porcentaje') or 0) > 0 else "—",
+                                size=12,
+                            )),
                             ft.DataCell(status_chip),
                             ft.DataCell(actions),
                         ]
@@ -262,6 +267,14 @@ class ServicesView:
                                             size=12,
                                             color=T.TEXT_SECONDARY,
                                         ),
+                                        *(
+                                            [ft.Text(
+                                                f"ICE {float(s.get('ice_porcentaje') or 0):.0f}%",
+                                                size=12,
+                                                color=T.WARNING,
+                                            )]
+                                            if float(s.get('ice_porcentaje') or 0) > 0 else []
+                                        ),
                                     ],
                                     spacing=12,
                                 ),
@@ -288,6 +301,7 @@ class ServicesView:
                         ft.DataColumn(ft.Text("CATEGORÍA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                         ft.DataColumn(ft.Text("PRECIO TARIFA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                         ft.DataColumn(ft.Text("IVA", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
+                        ft.DataColumn(ft.Text("ICE", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                         ft.DataColumn(ft.Text("ESTADO", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                         ft.DataColumn(ft.Text("ACCIONES", weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED)),
                     ],
@@ -342,6 +356,18 @@ class ServicesView:
                 ],
                 expand=field_expand,
             )
+            tf_ice_codigo = ft.TextField(
+                label="Código ICE SRI (opcional)",
+                value=str(serv.get("ice_codigo") or "") if is_edit else "",
+                hint_text="Ej: 3031",
+                expand=field_expand,
+            )
+            tf_ice_pct = ft.TextField(
+                label="Tarifa ICE %",
+                value=str(float(serv.get("ice_porcentaje") or 0)) if is_edit else "0",
+                hint_text="0 = sin ICE",
+                expand=field_expand,
+            )
             tf_desc = ft.TextField(
                 label="Descripción del Servicio",
                 value=serv.get("descripcion", "") if is_edit else "",
@@ -360,16 +386,22 @@ class ServicesView:
                 cat = tf_cat.value
                 precio = tf_prec.value
                 iva = tf_iva.value
+                ice_codigo = tf_ice_codigo.value
+                ice_porcentaje = tf_ice_pct.value
                 desc = tf_desc.value
                 status = "active" if sw_status.value else "inactive"
 
                 if is_edit:
                     success, res = ServiceController.update(
-                        serv["id"], cod, nom, desc, precio, iva, cat, status
+                        serv["id"], cod, nom, desc, precio, iva, cat, status,
+                        ice_codigo=ice_codigo,
+                        ice_porcentaje=ice_porcentaje,
                     )
                 else:
                     success, res = ServiceController.create(
-                        cod, nom, desc, precio, iva, cat, status
+                        cod, nom, desc, precio, iva, cat, status,
+                        ice_codigo=ice_codigo,
+                        ice_porcentaje=ice_porcentaje,
                     )
 
                 if success:
@@ -380,12 +412,19 @@ class ServicesView:
                     show_toast(res, is_error=True)
 
             if mobile:
-                form_controls = [tf_cod, tf_cat, tf_nom, tf_prec, tf_iva, tf_desc, sw_status]
+                form_controls = [tf_cod, tf_cat, tf_nom, tf_prec, tf_iva, tf_ice_codigo, tf_ice_pct, tf_desc, sw_status]
             else:
                 form_controls = [
                     ft.Row([tf_cod, tf_cat], spacing=10),
                     tf_nom,
                     ft.Row([tf_prec, tf_iva], spacing=10),
+                    ft.Row([tf_ice_codigo, tf_ice_pct], spacing=10),
+                    ft.Text(
+                        "El ICE solo aplica a bienes gravados con este impuesto. "
+                        "Use el código de 4 dígitos del catálogo del SRI.",
+                        size=10,
+                        color=T.TEXT_MUTED,
+                    ),
                     tf_desc,
                     sw_status,
                 ]

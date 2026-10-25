@@ -7,6 +7,7 @@ from app.controllers.client_controller import ClientController
 from app.controllers.product_controller import ProductController
 from app.controllers.service_controller import ServiceController
 from app.controllers.invoice_controller import InvoiceController
+from app.services.sri_catalogs import FORMAS_PAGO_OPCIONES
 from core.state import AppState
 
 def _all_border(width: int, color: str) -> ft.Border:
@@ -84,17 +85,33 @@ class POSView:
         txt_sub0 = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
         txt_desc = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
         txt_iva = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
+        txt_ice = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
+        txt_propina = ft.Text("$0.00", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT)
         txt_total = ft.Text("$0.00", size=18, weight=ft.FontWeight.BOLD, color=T.SUCCESS_TEXT)
+
+        tf_propina = ft.TextField(
+            label="Propina ($)",
+            value="0.00",
+            hint_text="0.00",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            on_change=lambda e: recalculate_totals(e),
+            height=42,
+            text_size=13,
+            content_padding=ft.Padding.symmetric(horizontal=8, vertical=0),
+        )
 
         dd_payment = ft.Dropdown(
             label="Forma de Pago",
             value="EFECTIVO",
             options=[
-                ft.dropdown.Option("EFECTIVO", "Efectivo / Sin sistema fin."),
-                ft.dropdown.Option("TARJETA", "Tarjeta de Crédito / Débito"),
-                ft.dropdown.Option("TRANSFERENCIA", "Transferencia Bancaria"),
+                ft.dropdown.Option(value, label)
+                for value, label in FORMAS_PAGO_OPCIONES
             ],
             expand=True,
+        )
+        sw_send_email = ft.Switch(
+            label="Enviar por correo cuando el SRI autorice",
+            value=True,
         )
 
         def on_client_changed(e):
@@ -233,6 +250,8 @@ class POSView:
                     "cantidad": 1,
                     "descuento": 0.0,
                     "iva_porcentaje": float(item.get("iva_porcentaje", 15.0)),
+                    "ice_codigo": str(item.get("ice_codigo") or ""),
+                    "ice_porcentaje": float(item.get("ice_porcentaje") or 0),
                     "imagen_path": item.get("imagen_path", "") if tipo == "producto" else "",
                 })
             render_cart()
@@ -291,8 +310,13 @@ class POSView:
                 price = item["precio"]
                 desc = item["descuento"]
                 sub = (qty * price) - desc
-                iva_val = (sub * (item["iva_porcentaje"] / 100.0)) if item["iva_porcentaje"] > 0 else 0.0
-                total_i = sub + iva_val
+                ice_p = float(item.get("ice_porcentaje") or 0)
+                ice_val = (sub * (ice_p / 100.0)) if ice_p > 0 else 0.0
+                iva_val = (
+                    ((sub + ice_val) * (item["iva_porcentaje"] / 100.0))
+                    if item["iva_porcentaje"] > 0 else 0.0
+                )
+                total_i = sub + iva_val + ice_val
 
                 tf_desc = ft.TextField(
                     value=f"{desc:.2f}",
@@ -310,6 +334,14 @@ class POSView:
                                 controls=[
                                     ft.Text(f"{item['codigo']} - {item['nombre']}", size=12, weight=ft.FontWeight.BOLD, color=T.TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                                     ft.Text(f"P.Unit: ${price:.2f} | Total: ${total_i:.2f}", size=11, color=T.TEXT_MUTED),
+                                    *(
+                                        [ft.Text(
+                                            f"ICE {ice_p:.0f}%: ${ice_val:.2f}",
+                                            size=10,
+                                            color=T.WARNING,
+                                        )]
+                                        if ice_p > 0 else []
+                                    ),
                                 ],
                                 spacing=1,
                                 expand=True,
@@ -335,11 +367,12 @@ class POSView:
             recalculate_totals()
             self.page.update()
 
-        def recalculate_totals():
+        def recalculate_totals(e=None):
             sub15 = 0.0
             sub0 = 0.0
             total_d = 0.0
             iva_t = 0.0
+            ice_t = 0.0
 
             for item in self.cart_items:
                 q = item["cantidad"]
@@ -347,21 +380,33 @@ class POSView:
                 d = item["descuento"]
                 sub = (q * p) - d
                 iva_p = item["iva_porcentaje"]
+                ice_p = float(item.get("ice_porcentaje") or 0)
 
                 total_d += d
+                ice_val = (sub * (ice_p / 100.0)) if ice_p > 0 else 0.0
                 if iva_p > 0:
                     sub15 += sub
-                    iva_t += sub * (iva_p / 100.0)
+                    iva_t += (sub + ice_val) * (iva_p / 100.0)
                 else:
                     sub0 += sub
+                ice_t += ice_val
 
-            tot_final = sub15 + sub0 + iva_t
+            try:
+                propina_t = max(0.0, float(tf_propina.value or 0))
+            except (TypeError, ValueError):
+                propina_t = 0.0
+
+            tot_final = sub15 + sub0 + iva_t + ice_t + propina_t
 
             txt_sub15.value = f"${sub15:.2f}"
             txt_sub0.value = f"${sub0:.2f}"
             txt_desc.value = f"${total_d:.2f}"
             txt_iva.value = f"${iva_t:.2f}"
+            txt_ice.value = f"${ice_t:.2f}"
+            txt_propina.value = f"${propina_t:.2f}"
             txt_total.value = f"${tot_final:.2f}"
+            if e is not None:
+                self.page.update()
 
         def open_quick_client_dialog():
             tf_ident = ft.TextField(label="Identificación / RUC", expand=True)
@@ -413,7 +458,9 @@ class POSView:
             success, result = InvoiceController.create_invoice(
                 client_id=self.selected_client_id,
                 cart_items=self.cart_items,
-                forma_pago=dd_payment.value
+                forma_pago=dd_payment.value,
+                propina=tf_propina.value,
+                send_email=bool(sw_send_email.value),
             )
 
             if not success:
@@ -436,6 +483,8 @@ class POSView:
                 close_dialog(dlg)
                 self.cart_items = []
                 self.selected_client_id = None
+                tf_propina.value = "0.00"
+                sw_send_email.value = True
                 load_initial_data()
                 show_toast("Venta completada. POS listo para nueva factura.")
 
@@ -453,7 +502,7 @@ class POSView:
                             ft.Text(f"Secuencial: {secuencial}", size=14, weight=ft.FontWeight.BOLD),
                             ft.Text(f"Clave Acceso SRI:\n{clave_acceso}", size=11, color=T.TEXT_MUTED),
                             ft.Divider(height=1),
-                            ft.Text(f"Estado Envíos:\n{email_status}", size=12, color=T.INFO_TEXT),
+                            ft.Text(f"Correo:\n{email_status}", size=12, color=T.INFO_TEXT),
                         ],
                         tight=True,
                         spacing=10,
@@ -557,12 +606,16 @@ class POSView:
                                 ft.Row([ft.Text("Subtotal 0%:", size=12, color=T.TEXT_MUTED), txt_sub0], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                                 ft.Row([ft.Text("Total Descuento:", size=12, color=T.TEXT_MUTED), txt_desc], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                                 ft.Row([ft.Text("Monto IVA (15%):", size=12, color=T.TEXT_MUTED), txt_iva], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                                ft.Row([ft.Text("ICE:", size=12, color=T.TEXT_MUTED), txt_ice], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                                ft.Row([ft.Text("Propina:", size=12, color=T.TEXT_MUTED), txt_propina], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                                 ft.Divider(height=1, color=T.BORDER_STRONG),
                                 ft.Row([ft.Text("TOTAL A PAGAR:", size=15, weight=ft.FontWeight.BOLD, color=T.TEXT), txt_total], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                             ],
                             spacing=4,
                         ),
+                        tf_propina,
                         dd_payment,
+                        sw_send_email,
                         ft.FilledButton(
                             "EMITIR FACTURA ELECTRÓNICA",
                             icon=ft.Icons.POINT_OF_SALE_ROUNDED,
@@ -629,12 +682,16 @@ class POSView:
                                 ft.Row([ft.Text("Subtotal 0%:", size=12, color=T.TEXT_MUTED), txt_sub0], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                                 ft.Row([ft.Text("Total Descuento:", size=12, color=T.TEXT_MUTED), txt_desc], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                                 ft.Row([ft.Text("Monto IVA (15%):", size=12, color=T.TEXT_MUTED), txt_iva], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                                ft.Row([ft.Text("ICE:", size=12, color=T.TEXT_MUTED), txt_ice], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                                ft.Row([ft.Text("Propina:", size=12, color=T.TEXT_MUTED), txt_propina], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                                 ft.Divider(height=1, color=T.BORDER_STRONG),
                                 ft.Row([ft.Text("TOTAL A PAGAR:", size=15, weight=ft.FontWeight.BOLD, color=T.TEXT), txt_total], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                             ],
                             spacing=4,
                         ),
+                        tf_propina,
                         dd_payment,
+                        sw_send_email,
                         ft.FilledButton(
                             "EMITIR FACTURA ELECTRÓNICA",
                             icon=ft.Icons.POINT_OF_SALE_ROUNDED,

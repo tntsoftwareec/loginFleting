@@ -15,6 +15,7 @@ from app.views.ui_helpers import (
     stat_card,
 )
 from app.services.whatsapp_service import build_quote_message, build_whatsapp_link
+from app.services.sri_catalogs import FORMAS_PAGO_OPCIONES
 from app.models.company_model import CompanyModel
 from core.state import AppState
 
@@ -168,14 +169,13 @@ class QuotationsView:
                 label="Forma de pago",
                 value="EFECTIVO",
                 options=[
-                    ft.dropdown.Option("EFECTIVO", "Efectivo"),
-                    ft.dropdown.Option("TARJETA", "Tarjeta de crédito / débito"),
-                    ft.dropdown.Option("TRANSFERENCIA", "Transferencia bancaria"),
+                    ft.dropdown.Option(value, label)
+                    for value, label in FORMAS_PAGO_OPCIONES
                 ],
                 width=280,
             )
             sw_send_email = ft.Switch(
-                label="Enviar la factura por correo al cliente",
+                label="Enviar la factura por correo cuando el SRI la autorice",
                 value=False,
             )
 
