@@ -115,6 +115,24 @@ def _formatear_mensajes(mensajes: list[dict]) -> str:
     return "\n".join(lineas)
 
 
+def _tiene_error_clave_registrada(recepcion: dict) -> bool:
+    """Detecta el error 43 del SRI: la clave de acceso ya está registrada.
+
+    Ocurre cuando se intenta reenviar un comprobante que ya fue recibido por
+    el SRI. En ese caso no se debe tratar como un rechazo definitivo: hay que
+    consultar la autorización existente.
+    """
+    for msg in recepcion.get("mensajes") or []:
+        identificador = str(msg.get("identificador") or "").strip()
+        texto = " ".join(
+            str(msg.get(campo) or "")
+            for campo in ("mensaje", "informacionAdicional")
+        ).upper()
+        if identificador == "43" or "CLAVE ACCESO REGISTRADA" in texto:
+            return True
+    return False
+
+
 def _formatear_respuesta(estado: str, recepcion: dict, autorizacion: dict | None) -> str:
     lineas = [f"ESTADO SRI: {estado or 'SIN RESPUESTA'}"]
 
@@ -122,6 +140,8 @@ def _formatear_respuesta(estado: str, recepcion: dict, autorizacion: dict | None
         lineas.append("")
         lineas.append("RECEPCION")
         lineas.append(f"Estado: {recepcion.get('estado') or 'N/A'}")
+        if recepcion.get("nota"):
+            lineas.append(recepcion["nota"])
         if recepcion.get("mensajes"):
             lineas.append(_formatear_mensajes(recepcion["mensajes"]))
 
@@ -465,12 +485,38 @@ def send_invoice(xml_path: str, company_info: dict) -> tuple[bool, dict | str]:
     estado = estado_recepcion or "SIN RESPUESTA"
     clave = recepcion.get("clave_acceso") or ""
 
-    if estado_recepcion == "RECIBIDA":
+    if not clave:
+        try:
+            clave = _text(ET.fromstring(xml_content), "claveAcceso")
+        except ET.ParseError:
+            clave = ""
+
+    # Si el SRI responde que la clave ya está registrada, el comprobante ya
+    # fue enviado antes. Consultamos la autorización existente en lugar de
+    # reportar un rechazo definitivo. Esto cubre los reintentos después de un
+    # timeout o de un cierre inesperado durante la consulta de autorización.
+    clave_ya_registrada = (
+        estado_recepcion != "RECIBIDA"
+        and _tiene_error_clave_registrada(recepcion)
+    )
+
+    if estado_recepcion == "RECIBIDA" or clave_ya_registrada:
         if len(clave) != 49:
-            try:
-                clave = _text(ET.fromstring(xml_content), "claveAcceso")
-            except ET.ParseError:
-                clave = ""
+            return True, {
+                "estado": estado,
+                "ambiente": endpoints["nombre"],
+                "mensaje": "El SRI no devolvió una clave de acceso válida.",
+                "respuesta": _formatear_respuesta(estado, recepcion, None),
+                "recepcion": recepcion,
+                "autorizacion": None,
+                "clave_acceso": clave,
+                "numero_autorizacion": "",
+                "fecha_autorizacion": "",
+                "xml_firmado_path": signed_path,
+                "xml_autorizado_path": "",
+                "respuesta_cruda": recepcion.get("raw", ""),
+            }
+
         for intento in range(AUTORIZACION_INTENTOS):
             ok, autorizacion = _consultar_autorizacion(
                 clave, endpoints["autorizacion"]
@@ -483,6 +529,25 @@ def send_invoice(xml_path: str, company_info: dict) -> tuple[bool, dict | str]:
                 break
             if intento < AUTORIZACION_INTENTOS - 1:
                 time.sleep(AUTORIZACION_ESPERA)
+
+        if clave_ya_registrada:
+            if estado == "AUTORIZADO":
+                nota = (
+                    "La clave de acceso ya estaba registrada en el SRI; "
+                    "se recuperó la autorización existente."
+                )
+            else:
+                nota = (
+                    "La clave de acceso ya estaba registrada en el SRI, "
+                    "pero la consulta de autorización devolvió: "
+                    f"{estado or 'SIN RESPUESTA'}."
+                )
+            recepcion = {
+                "estado": "YA REGISTRADA",
+                "mensajes": [],
+                "nota": nota,
+                "clave_acceso": clave,
+            }
 
     mensaje = _formatear_respuesta(estado, recepcion, autorizacion)
     xml_autorizado = ""

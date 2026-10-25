@@ -402,6 +402,33 @@ class InvoiceController:
         if not company:
             return False, "No se encontró la configuración de la empresa."
 
+        # No reenviar un comprobante ya autorizado: el SRI lo rechazaría con
+        # el error 43 (clave de acceso registrada). Para reenviar el correo
+        # existe la acción específica de reenvío.
+        estado_actual = (inv.get("estado") or "").upper()
+        if estado_actual == "AUTORIZADO":
+            autorizacion = {
+                "estado": "AUTORIZADO",
+                "numero": inv.get("sri_autorizacion") or "",
+                "fecha": inv.get("sri_fecha_autorizacion") or "",
+            }
+            pdf_path = cls._regenerate_invoice_pdf(inv, company, autorizacion)
+            return True, {
+                "estado": "AUTORIZADO",
+                "mensaje": "La factura ya está autorizada por el SRI.",
+                "respuesta": (
+                    inv.get("sri_respuesta")
+                    or "La factura ya está autorizada por el SRI."
+                ),
+                "clave_acceso": inv.get("clave_acceso") or "",
+                "numero_autorizacion": inv.get("sri_autorizacion") or "",
+                "fecha_autorizacion": inv.get("sri_fecha_autorizacion") or "",
+                "pdf_path": pdf_path or inv.get("pdf_path") or "",
+                "email_status": (
+                    "La factura ya está autorizada; no se reenvió al SRI."
+                ),
+            }
+
         ok, xml_or_error = cls._ensure_invoice_xml(inv, company)
         if not ok:
             return False, xml_or_error

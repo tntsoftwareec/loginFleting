@@ -133,6 +133,30 @@ class InvoiceEmailFlowTest(unittest.TestCase):
         self.assertFalse(email_mock.called)
         self.assertEqual(result.get("email_status"), "Envío por correo desactivado.")
 
+    def test_authorized_invoice_is_not_resent_to_sri(self):
+        invoice = dict(
+            INVOICE,
+            estado="AUTORIZADO",
+            sri_autorizacion="1234567890",
+            sri_fecha_autorizacion="2026-10-24T20:00:00-05:00",
+            sri_respuesta="ESTADO SRI: AUTORIZADO",
+        )
+        with patch.object(InvoiceController, "get_by_id", return_value=invoice), \
+             patch.object(CompanyController, "get_info", return_value=COMPANY), \
+             patch.object(
+                 InvoiceController,
+                 "_regenerate_invoice_pdf",
+                 return_value="/tmp/ride_autorizado.pdf",
+             ), \
+             patch.object(SRIService, "send_invoice") as send_mock:
+            ok, result = InvoiceController.send_to_sri(1)
+
+        self.assertTrue(ok)
+        self.assertFalse(send_mock.called)
+        self.assertEqual(result["estado"], "AUTORIZADO")
+        self.assertEqual(result["numero_autorizacion"], "1234567890")
+        self.assertIn("ya está autorizada", result["email_status"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -282,6 +282,35 @@ class InvoicesView:
                 column_spacing=15,
             )
 
+            estado_inv = (inv.get("estado") or "GENERADA").upper()
+            ya_autorizada = (
+                "AUTORIZ" in estado_inv and "NO AUTORIZ" not in estado_inv
+            )
+            dialog_actions = [
+                ft.OutlinedButton(
+                    "Ver respuesta SRI",
+                    icon=ft.Icons.FACT_CHECK_OUTLINED,
+                    on_click=lambda e: (
+                        close_dialog(dlg),
+                        open_sri_response_dialog(inv),
+                    ),
+                ),
+            ]
+            if not ya_autorizada:
+                dialog_actions.append(
+                    ft.FilledButton(
+                        "Enviar al SRI",
+                        icon=ft.Icons.CLOUD_UPLOAD_ROUNDED,
+                        on_click=lambda e: (
+                            close_dialog(dlg),
+                            send_sri_action(inv["id"]),
+                        ),
+                    )
+                )
+            dialog_actions.append(
+                ft.OutlinedButton("Cerrar", on_click=lambda e: close_dialog(dlg))
+            )
+
             dlg = ft.AlertDialog(
                 title=ft.Text(f"Factura N° {inv['secuencial']}", weight=ft.FontWeight.BOLD),
                 content=ft.Container(
@@ -337,22 +366,7 @@ class InvoicesView:
                     ),
                     width=600,
                 ),
-                actions=[
-                    ft.OutlinedButton(
-                        "Ver respuesta SRI",
-                        icon=ft.Icons.FACT_CHECK_OUTLINED,
-                        on_click=lambda e: (
-                            close_dialog(dlg),
-                            open_sri_response_dialog(inv),
-                        ),
-                    ),
-                    ft.FilledButton(
-                        "Enviar al SRI",
-                        icon=ft.Icons.CLOUD_UPLOAD_ROUNDED,
-                        on_click=lambda e: (close_dialog(dlg), send_sri_action(inv["id"])),
-                    ),
-                    ft.OutlinedButton("Cerrar", on_click=lambda e: close_dialog(dlg)),
-                ],
+                actions=dialog_actions,
             )
             show_dialog(dlg)
 
@@ -395,6 +409,10 @@ class InvoicesView:
             cards = []
             for inv in filtered:
                 est = inv.get("estado") or "GENERADA"
+                es_autorizada = (
+                    "AUTORIZ" in est.upper()
+                    and "NO AUTORIZ" not in est.upper()
+                )
                 est_color, est_bg = sri_status_style(est)
                 status_chip = ft.Container(
                     content=ft.Text(
@@ -431,7 +449,12 @@ class InvoicesView:
                         ft.IconButton(
                             icon=ft.Icons.CLOUD_UPLOAD_ROUNDED,
                             icon_color=T.INFO,
-                            tooltip="Enviar al SRI (ambiente configurado en Mi Empresa)",
+                            disabled=es_autorizada,
+                            tooltip=(
+                                "La factura ya está autorizada por el SRI"
+                                if es_autorizada
+                                else "Enviar al SRI (ambiente configurado en Mi Empresa)"
+                            ),
                             on_click=lambda e, invoice=inv: send_sri_action(invoice["id"]),
                         ),
                         ft.IconButton(
