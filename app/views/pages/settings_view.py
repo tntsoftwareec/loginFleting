@@ -30,6 +30,28 @@ class SettingsView:
         self.router.rerender()
 
     def render(self):
+        if not AppState.has_permission("can_read", "settings"):
+            content_layout = ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
+                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text(
+                            "No tienes permisos suficientes para acceder a este módulo.",
+                            color=T.TEXT_MUTED,
+                            size=14,
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=12,
+                ),
+                padding=60,
+                alignment=ft.Alignment(0, 0),
+                expand=True,
+            )
+            return MainLayout(page=self.page, content=content_layout, router=self.router)
+
         content = ft.Column(
             spacing=24,
             controls=[

@@ -18,7 +18,7 @@ class ClientsView:
         self.search_query = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "clients"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -125,8 +125,8 @@ class ClientsView:
                     border_radius=12,
                 )
 
-                can_update = AppState.has_permission("can_update")
-                can_delete = AppState.has_permission("can_delete")
+                can_update = AppState.has_permission("can_update", "clients")
+                can_delete = AppState.has_permission("can_delete", "clients")
 
                 actions = ft.Row(
                     controls=[
@@ -368,7 +368,7 @@ class ClientsView:
             content_padding=ft.Padding.symmetric(horizontal=10, vertical=0),
         )
 
-        can_write = AppState.has_permission("can_write")
+        can_write = AppState.has_permission("can_write", "clients")
         btn_add = ft.FilledButton(
             "Nuevo Cliente",
             icon=ft.Icons.ADD,

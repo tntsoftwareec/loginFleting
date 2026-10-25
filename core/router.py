@@ -102,10 +102,12 @@ class Router:
     # ── Internal ────────────────────────────────────────────────────────────
 
     def _resolve(self, route):
-        """Resolve a route applying the authentication guard.
+        """Resolve a route applying authentication and module guards.
 
         - Unknown route      -> "/"
         - Protected route without an authenticated user -> "/login"
+        - Route whose module is not allowed for the current role -> first
+          route the user can access (or "/login" if there is none).
         """
         if route not in self.routes:
             logger.warning(f"Route not found: {route}")
@@ -116,7 +118,30 @@ class Router:
             logger.info(f"Route requires authentication: {route}")
             return "/login"
 
+        module = route_def.get("module")
+        if module and not AppState.can_access_module(module):
+            fallback = self._first_allowed_route()
+            logger.info(
+                f"Access denied to module '{module}' for route {route}; "
+                f"redirecting to {fallback}"
+            )
+            return fallback
+
         return route
+
+    def _first_allowed_route(self) -> str:
+        """Primera ruta protegida a la que el usuario puede acceder."""
+        from configs.routes import ROUTES
+
+        for route_def in ROUTES:
+            # Las rutas públicas (login) no sirven como destino de un
+            # usuario autenticado.
+            if not route_def.get("auth_required", True):
+                continue
+            module = route_def.get("module")
+            if not module or AppState.can_access_module(module):
+                return route_def["path"]
+        return "/login"
 
     def _can_go_back(self) -> bool:
         return len(self._history) > 0

@@ -31,7 +31,7 @@ class QuotationsView:
         self.search_query = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "quotations"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -112,6 +112,9 @@ class QuotationsView:
             open_path(self.page, filepath)
 
         def send_email_action(quot_id: int):
+            if not AppState.has_permission("can_write", "quotations"):
+                show_toast("No tienes permisos para enviar cotizaciones.", is_error=True)
+                return
             show_toast("Enviando cotización por correo...")
             success, msg = QuotationController.send_quotation_email(quot_id)
             if success:
@@ -121,6 +124,9 @@ class QuotationsView:
                 show_toast(msg, is_error=True)
 
         def send_whatsapp_action(quot):
+            if not AppState.has_permission("can_write", "quotations"):
+                show_toast("No tienes permisos para enviar cotizaciones.", is_error=True)
+                return
             client = ClientController.get_by_id(quot.get("client_id")) if quot.get("client_id") else None
             phone = (client or {}).get("telefono") or ""
             if not phone:
@@ -161,7 +167,7 @@ class QuotationsView:
                 show_toast("Esta cotización ya fue facturada.", is_error=True)
                 return
 
-            if not AppState.has_permission("can_write"):
+            if not AppState.has_permission("can_write", "quotations"):
                 show_toast("No tienes permisos para facturar cotizaciones.", is_error=True)
                 return
 
@@ -269,6 +275,9 @@ class QuotationsView:
             show_dialog(dlg)
 
         def delete_quotation_action(quot_id: int):
+            if not AppState.has_permission("can_delete", "quotations"):
+                show_toast("No tienes permisos para eliminar cotizaciones.", is_error=True)
+                return
             dlg_confirm = ft.AlertDialog(
                 title=ft.Text("¿Eliminar cotización?", weight=ft.FontWeight.BOLD),
                 content=ft.Text("Esta acción no se puede deshacer. ¿Desea continuar?"),
@@ -337,7 +346,7 @@ class QuotationsView:
             already_invoiced = bool(quot.get("invoice_id")) or (
                 (quot.get("estado") or "").upper() == "FACTURADA"
             )
-            if AppState.has_permission("can_write") and not already_invoiced:
+            if AppState.has_permission("can_write", "quotations") and not already_invoiced:
                 details_actions.insert(
                     0,
                     ft.FilledButton(
@@ -413,7 +422,8 @@ class QuotationsView:
 
             rows = []
             cards = []
-            can_write = AppState.has_permission("can_write")
+            can_write = AppState.has_permission("can_write", "quotations")
+            can_delete = AppState.has_permission("can_delete", "quotations")
             for quot in filtered:
                 est = quot.get("estado", "EMITIDA")
                 is_sent = "ENVIADA" in est
@@ -469,14 +479,18 @@ class QuotationsView:
                         ),
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINE_ROUNDED,
-                            icon_color=T.DANGER,
+                            icon_color=T.DANGER if can_delete else T.TEXT_SUBTLE,
                             tooltip=(
                                 "No se puede eliminar una cotización facturada"
                                 if is_invoiced
-                                else "Eliminar cotización"
+                                else (
+                                    "Eliminar cotización"
+                                    if can_delete
+                                    else "Sin permiso para eliminar"
+                                )
                             ),
                             on_click=lambda e, q=quot: delete_quotation_action(q["id"]),
-                            disabled=is_invoiced,
+                            disabled=is_invoiced or not can_delete,
                         ),
                     ],
                     spacing=0,

@@ -19,7 +19,7 @@ class CompanyView:
         self.company_info = {}
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "company"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -133,7 +133,7 @@ class CompanyView:
         # Selector de archivos. En Flet 1.x FilePicker es un servicio y
         # pick_files() es una corrutina: debe ejecutarse con run_task/await.
         file_picker = get_file_picker(self.page)
-        can_update = AppState.has_permission("can_update")
+        can_update = AppState.has_permission("can_update", "company")
 
         # Logo de la empresa para facturas y cotizaciones
         logo_preview = ft.Container(
@@ -330,7 +330,7 @@ class CompanyView:
         sw_smtp_ssl = ft.Switch(label="Usar SSL directo (Puerto 465)", value=bool(self.company_info.get("smtp_ssl", 0)))
 
         def save_company_data(e):
-            can_update = AppState.has_permission("can_update")
+            can_update = AppState.has_permission("can_update", "company")
             if not can_update:
                 show_toast("No tienes permisos de modificación.", is_error=True)
                 return

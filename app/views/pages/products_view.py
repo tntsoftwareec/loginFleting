@@ -58,7 +58,7 @@ class ProductsView:
         self.search_query = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "products"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -188,8 +188,8 @@ class ProductsView:
                     border_radius=12,
                 )
 
-                can_update = AppState.has_permission("can_update")
-                can_delete = AppState.has_permission("can_delete")
+                can_update = AppState.has_permission("can_update", "products")
+                can_delete = AppState.has_permission("can_delete", "products")
 
                 actions = ft.Row(
                     controls=[
@@ -662,7 +662,7 @@ class ProductsView:
             content_padding=ft.Padding.symmetric(horizontal=10, vertical=0),
         )
 
-        can_write = AppState.has_permission("can_write")
+        can_write = AppState.has_permission("can_write", "products")
         btn_add = ft.FilledButton(
             "Nuevo Producto",
             icon=ft.Icons.ADD,

@@ -19,6 +19,28 @@ class HomeView:
         self.router = router
 
     def render(self):
+        if not AppState.can_access_module("home"):
+            content_layout = ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
+                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text(
+                            "Tu rol no tiene acceso al panel de inicio.",
+                            color=T.TEXT_MUTED,
+                            size=14,
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=12,
+                ),
+                padding=60,
+                alignment=ft.Alignment(0, 0),
+                expand=True,
+            )
+            return MainLayout(page=self.page, content=content_layout, router=self.router)
+
         user = AppState.current_user or {}
         user_name = user.get("name", "Usuario")
 
@@ -28,64 +50,77 @@ class HomeView:
                 "desc": "Emisión de facturas electrónicas, carritos de venta y cobro en caja",
                 "icon": ft.Icons.POINT_OF_SALE_ROUNDED,
                 "color": T.ICON_NEON,
-                "route": "/pos"
+                "route": "/pos",
+                "module": "pos",
             },
             {
                 "title": "Facturas Emitidas",
                 "desc": "Consulta de comprobantes, descarga de XML y RIDE PDF, re-envío por correo",
                 "icon": ft.Icons.RECEIPT_LONG_ROUNDED,
                 "color": T.ICON_NEON_BLUE,
-                "route": "/invoices"
+                "route": "/invoices",
+                "module": "invoices",
             },
             {
                 "title": "Directorio de Clientes",
                 "desc": "Gestión CRUD de clientes, RUC/Cédula, correo y teléfonos",
                 "icon": ft.Icons.PEOPLE_ROUNDED,
                 "color": T.ICON_NEON_ALT,
-                "route": "/clients"
+                "route": "/clients",
+                "module": "clients",
             },
             {
                 "title": "Gestión de Proveedores",
                 "desc": "Control de distribuidores, marcas y personas de contacto",
                 "icon": ft.Icons.LOCAL_SHIPPING_ROUNDED,
                 "color": T.ICON_NEON,
-                "route": "/suppliers"
+                "route": "/suppliers",
+                "module": "suppliers",
             },
             {
                 "title": "Catálogo de Productos",
                 "desc": "Precios, costos, imágenes y datos del catálogo de mercancías",
                 "icon": ft.Icons.INVENTORY_2_ROUNDED,
                 "color": T.ICON_NEON_PINK,
-                "route": "/products"
+                "route": "/products",
+                "module": "products",
             },
             {
                 "title": "Inventario y Existencias",
                 "desc": "Entradas, salidas, ajustes de stock, alertas e historial de movimientos",
                 "icon": ft.Icons.WAREHOUSE_ROUNDED,
                 "color": T.ICON_NEON_YELLOW,
-                "route": "/inventory"
+                "route": "/inventory",
+                "module": "inventory",
             },
             {
                 "title": "Servicios Ofrecidos",
                 "desc": "Tarifas de servicios, consultorías y soporte técnico",
                 "icon": ft.Icons.MISCELLANEOUS_SERVICES_ROUNDED,
                 "color": T.ICON_NEON_ALT,
-                "route": "/services"
+                "route": "/services",
+                "module": "services",
             },
             {
                 "title": "Datos de Empresa & Firma",
                 "desc": "Parámetros del negocio, RUC, firma digital .p12 y correo SMTP",
                 "icon": ft.Icons.BUSINESS_ROUNDED,
                 "color": T.ICON_NEON_ORANGE,
-                "route": "/company"
+                "route": "/company",
+                "module": "company",
             },
             {
                 "title": "Usuarios y Permisos",
                 "desc": "Administración de accesos de personal, cajeros y roles del sistema",
                 "icon": ft.Icons.SUPERVISED_USER_CIRCLE_ROUNDED,
                 "color": T.ICON_NEON_PURPLE,
-                "route": "/users"
+                "route": "/users",
+                "module": "users",
             },
+        ]
+        modules = [
+            module for module in modules
+            if AppState.can_access_module(module["module"])
         ]
 
         cards = []
@@ -153,29 +188,60 @@ class HomeView:
         )
 
         # ── Tarjetas de resumen (estadísticas) ──────────────────────────────
+        # Solo se consultan los módulos a los que el rol tiene acceso.
         stats_row = ft.ResponsiveRow(spacing=10, run_spacing=10)
+        stats_controls = []
         try:
-            clientes = len(ClientController.get_all())
-            productos = len(ProductController.get_all())
-            inventory_summary = InventoryController.get_summary()
-            facturas = InvoiceController.get_all()
-            cotizaciones = len(QuotationController.get_all())
-            facturado = sum(float(f.get("importe_total") or 0) for f in facturas)
-            stats_row.controls = [
-                stat_card("Clientes", str(clientes), ft.Icons.PEOPLE_ROUNDED, T.SKY),
-                stat_card(
-                    "Productos",
-                    str(productos),
-                    ft.Icons.INVENTORY_2_ROUNDED,
-                    T.PURPLE,
-                    subtitle=f'{inventory_summary["low_stock_total"]} bajo stock',
-                ),
-                stat_card("Facturas emitidas", str(len(facturas)), ft.Icons.RECEIPT_LONG_ROUNDED,
-                          T.PRIMARY, subtitle=f"Total ${facturado:,.2f}"),
-                stat_card("Cotizaciones", str(cotizaciones), ft.Icons.DESCRIPTION_ROUNDED, T.PURPLE_TEXT),
-            ]
+            if AppState.can_access_module("clients"):
+                clientes = len(ClientController.get_all())
+                stats_controls.append(
+                    stat_card("Clientes", str(clientes), ft.Icons.PEOPLE_ROUNDED, T.SKY)
+                )
+
+            if (
+                AppState.can_access_module("products")
+                or AppState.can_access_module("inventory")
+            ):
+                productos = len(ProductController.get_all())
+                inventory_summary = InventoryController.get_summary()
+                stats_controls.append(
+                    stat_card(
+                        "Productos",
+                        str(productos),
+                        ft.Icons.INVENTORY_2_ROUNDED,
+                        T.PURPLE,
+                        subtitle=f'{inventory_summary["low_stock_total"]} bajo stock',
+                    )
+                )
+
+            if AppState.can_access_module("invoices"):
+                facturas = InvoiceController.get_all()
+                facturado = sum(
+                    float(f.get("importe_total") or 0) for f in facturas
+                )
+                stats_controls.append(
+                    stat_card(
+                        "Facturas emitidas",
+                        str(len(facturas)),
+                        ft.Icons.RECEIPT_LONG_ROUNDED,
+                        T.PRIMARY,
+                        subtitle=f"Total ${facturado:,.2f}",
+                    )
+                )
+
+            if AppState.can_access_module("quotations"):
+                cotizaciones = len(QuotationController.get_all())
+                stats_controls.append(
+                    stat_card(
+                        "Cotizaciones",
+                        str(cotizaciones),
+                        ft.Icons.DESCRIPTION_ROUNDED,
+                        T.PURPLE_TEXT,
+                    )
+                )
         except Exception:  # noqa: BLE001
-            stats_row.controls = []
+            stats_controls = []
+        stats_row.controls = stats_controls
 
         content = ft.Column(
             controls=[

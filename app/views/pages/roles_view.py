@@ -1,13 +1,23 @@
 import flet as ft
 from core import theme as T
-from app.views.layouts.main_layout import MainLayout
-from app.controllers.role_controller import RoleController
-from app.views.ui_helpers import form_dialog_width, is_mobile_page
+from core.permissions import (
+    ACTION_COLORS,
+    ACTION_LABELS,
+    MODULES,
+    PRESETS,
+    PRESET_ORDER,
+    preset_permissions,
+)
 from core.state import AppState
+from app.controllers.role_controller import RoleController
+from app.views.layouts.main_layout import MainLayout
+from app.views.ui_helpers import is_mobile_page, wide_dialog_width
+
 
 def _all_border(width: int, color: str) -> ft.Border:
     side = ft.BorderSide(width, color)
     return ft.Border(top=side, right=side, bottom=side, left=side)
+
 
 class RolesView:
     def __init__(self, page: ft.Page, router):
@@ -17,13 +27,24 @@ class RolesView:
         self.filter_query = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "roles"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
                         ft.Icon(ft.Icons.LOCK_OUTLINED, color=T.DANGER, size=64),
-                        ft.Text("Acceso Restringido", color=T.TEXT, size=22, weight=ft.FontWeight.BOLD),
-                        ft.Text("Tu rol actual no posee permisos de lectura (can_read) para acceder a este módulo.", color=T.TEXT_MUTED, size=14, text_align=ft.TextAlign.CENTER),
+                        ft.Text(
+                            "Acceso Restringido",
+                            color=T.TEXT,
+                            size=22,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                        ft.Text(
+                            "Tu rol actual no tiene permiso de lectura para el "
+                            "módulo de roles y permisos.",
+                            color=T.TEXT_MUTED,
+                            size=14,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -33,10 +54,18 @@ class RolesView:
                 alignment=ft.Alignment(0, 0),
                 expand=True,
             )
-            return MainLayout(page=self.page, content=content_layout, router=self.router)
+            return MainLayout(
+                page=self.page,
+                content=content_layout,
+                router=self.router,
+            )
 
         mobile = is_mobile_page(self.page)
-        self.roles_container = ft.Column(spacing=10, expand=True, scroll=ft.ScrollMode.AUTO)
+        self.roles_container = ft.Column(
+            spacing=10,
+            expand=True,
+            scroll=ft.ScrollMode.AUTO,
+        )
 
         def show_dialog(dlg):
             self.page.dialog = dlg
@@ -75,19 +104,24 @@ class RolesView:
             self.roles_list = RoleController.get_all()
             render_roles()
 
-        def make_perm_chip(label: str, is_active: bool, active_color: str, icon_name: str):
+        def make_module_chip(label: str, icon_name: str):
             return ft.Container(
                 content=ft.Row(
                     controls=[
-                        ft.Icon(icon_name, color=active_color if is_active else T.TEXT_SUBTLE, size=12),
-                        ft.Text(label, color=active_color if is_active else T.TEXT_SUBTLE, size=11, weight=ft.FontWeight.W_500),
+                        ft.Icon(icon_name, color=T.INDIGO_TEXT, size=12),
+                        ft.Text(
+                            label,
+                            color=T.INDIGO_TEXT,
+                            size=11,
+                            weight=ft.FontWeight.W_500,
+                        ),
                     ],
                     spacing=3,
                 ),
                 padding=ft.Padding.symmetric(horizontal=8, vertical=3),
                 border_radius=12,
-                bgcolor=f"{active_color}18" if is_active else T.SURFACE_ALT,
-                border=_all_border(1, f"{active_color}44" if is_active else T.BORDER_STRONG),
+                bgcolor=T.INDIGO_BG,
+                border=_all_border(1, T.INDIGO),
             )
 
         def render_roles():
@@ -103,8 +137,16 @@ class RolesView:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SHIELD_OUTLINED, color=T.ICON_MUTED, size=48),
-                                ft.Text("No se encontraron roles", color=T.TEXT_MUTED, size=16),
+                                ft.Icon(
+                                    ft.Icons.SHIELD_OUTLINED,
+                                    color=T.ICON_MUTED,
+                                    size=48,
+                                ),
+                                ft.Text(
+                                    "No se encontraron roles",
+                                    color=T.TEXT_MUTED,
+                                    size=16,
+                                ),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=8,
@@ -119,29 +161,40 @@ class RolesView:
             rows = []
             cards = []
             for role in filtered:
-                role_id = role["id"]
                 name = role["name"]
                 description = role.get("description") or "Sin descripción"
                 users_count = role.get("users_count", 0)
+                module_permissions = role.get("module_permissions") or {}
 
-                can_read = bool(role.get("can_read", 1))
-                can_write = bool(role.get("can_write", 1))
-                can_update = bool(role.get("can_update", 1))
-                can_delete = bool(role.get("can_delete", 1))
+                allowed_modules = [
+                    module for module in MODULES
+                    if module_permissions.get(module["key"], {}).get("can_read")
+                ]
 
-                perms_row = ft.Row(
-                    controls=[
-                        make_perm_chip("Leer", can_read, T.SUCCESS, ft.Icons.VISIBILITY_ROUNDED),
-                        make_perm_chip("Escribir", can_write, T.INDIGO, ft.Icons.ADD_CIRCLE_OUTLINE_ROUNDED),
-                        make_perm_chip("Actualizar", can_update, T.AMBER, ft.Icons.EDIT_ROUNDED),
-                        make_perm_chip("Eliminar", can_delete, T.DANGER, ft.Icons.DELETE_FOREVER_ROUNDED),
-                    ],
+                module_chips = [
+                    make_module_chip(module["label"], module["icon"])
+                    for module in allowed_modules[:8]
+                ]
+                if len(allowed_modules) > 8:
+                    module_chips.append(
+                        make_module_chip(
+                            f"+{len(allowed_modules) - 8} más",
+                            "MORE_HORIZ",
+                        )
+                    )
+                if not module_chips:
+                    module_chips.append(
+                        make_module_chip("Sin módulos asignados", "LOCK_OUTLINE")
+                    )
+
+                modules_row = ft.Row(
+                    controls=module_chips,
                     spacing=6,
                     wrap=True,
                 )
 
                 role_action_btns = []
-                if AppState.has_permission("can_update"):
+                if AppState.has_permission("can_update", "roles"):
                     role_action_btns.append(
                         ft.IconButton(
                             icon=ft.Icons.EDIT_OUTLINED,
@@ -150,7 +203,7 @@ class RolesView:
                             on_click=lambda e, r=role: open_role_dialog(r),
                         )
                     )
-                if AppState.has_permission("can_delete"):
+                if AppState.has_permission("can_delete", "roles"):
                     role_action_btns.append(
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINE_ROUNDED,
@@ -161,7 +214,11 @@ class RolesView:
                     )
 
                 role_icon = ft.Container(
-                    content=ft.Icon(ft.Icons.VERIFIED_USER_ROUNDED, color=T.INDIGO, size=24),
+                    content=ft.Icon(
+                        ft.Icons.VERIFIED_USER_ROUNDED,
+                        color=T.INDIGO,
+                        size=24,
+                    ),
                     width=42,
                     height=42,
                     border_radius=10,
@@ -172,8 +229,17 @@ class RolesView:
                 users_badge = ft.Container(
                     content=ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.PEOPLE_OUTLINED, color=T.CYAN_TEXT, size=13),
-                            ft.Text(f"{users_count} usuarios", color=T.CYAN_TEXT, size=11, weight=ft.FontWeight.W_500),
+                            ft.Icon(
+                                ft.Icons.PEOPLE_OUTLINED,
+                                color=T.CYAN_TEXT,
+                                size=13,
+                            ),
+                            ft.Text(
+                                f"{users_count} usuarios",
+                                color=T.CYAN_TEXT,
+                                size=11,
+                                weight=ft.FontWeight.W_500,
+                            ),
                         ],
                         spacing=3,
                     ),
@@ -215,21 +281,17 @@ class RolesView:
                     controls=[
                         role_icon,
                         role_info,
-                        ft.Row(
-                            controls=role_action_btns,
-                            spacing=4,
-                        ),
+                        ft.Row(controls=role_action_btns, spacing=4),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     vertical_alignment=ft.CrossAxisAlignment.START,
                 )
 
-                card_body = ft.Column(
-                    controls=[top_row, perms_row],
-                    spacing=8,
-                )
                 card = ft.Container(
-                    content=card_body,
+                    content=ft.Column(
+                        controls=[top_row, modules_row],
+                        spacing=8,
+                    ),
                     padding=14,
                     border_radius=12,
                     bgcolor=T.SURFACE_ALT,
@@ -243,10 +305,15 @@ class RolesView:
             self.roles_container.controls = cards if mobile else rows
             self.page.update()
 
-        # Dialogs: Create/Edit Role with Permissions
+        # ── Diálogo crear/editar rol con matriz de permisos ────────────────
         def open_role_dialog(role=None):
             is_edit = role is not None
             role_id = role["id"] if is_edit else None
+            current_permissions = (
+                role.get("module_permissions") or {}
+                if is_edit
+                else {}
+            )
 
             name_input = ft.TextField(
                 label="Nombre del Rol",
@@ -275,42 +342,186 @@ class RolesView:
                 border_radius=10,
             )
 
-            # Permission Checkboxes
-            can_read_check = ft.Checkbox(
-                label="Leer / Visualizar (can_read)",
-                value=bool(role.get("can_read", 1)) if is_edit else True,
-                fill_color=T.SUCCESS,
+            permission_checks: dict[str, dict[str, ft.Checkbox]] = {}
+            current_role_id = (AppState.current_user or {}).get("role_id")
+            is_own_role = bool(
+                is_edit
+                and current_role_id
+                and int(role_id) == int(current_role_id)
             )
-            can_write_check = ft.Checkbox(
-                label="Escribir / Crear (can_write)",
-                value=bool(role.get("can_write", 1)) if is_edit else True,
-                fill_color=T.INDIGO,
-            )
-            can_update_check = ft.Checkbox(
-                label="Actualizar / Modificar (can_update)",
-                value=bool(role.get("can_update", 1)) if is_edit else True,
-                fill_color=T.AMBER,
-            )
-            can_delete_check = ft.Checkbox(
-                label="Eliminar Registros (can_delete)",
-                value=bool(role.get("can_delete", 1)) if is_edit else False,
-                fill_color=T.DANGER,
+
+            def on_action_change(e, module_key: str, action: str):
+                checks = permission_checks[module_key]
+                if action != "can_read" and e.control.value:
+                    # Crear/editar/eliminar sin ver no tiene sentido.
+                    checks["can_read"].value = True
+                elif action == "can_read" and not e.control.value:
+                    for other_action, checkbox in checks.items():
+                        if other_action != "can_read":
+                            checkbox.value = False
+                self.page.update()
+
+            module_rows = []
+            for module in MODULES:
+                key = module["key"]
+                current = current_permissions.get(key, {})
+                checks = {}
+                checkboxes = []
+                for action in module["actions"]:
+                    checkbox = ft.Checkbox(
+                        label=ACTION_LABELS[action],
+                        value=bool(current.get(action, False)),
+                        fill_color=getattr(T, ACTION_COLORS[action], T.INDIGO),
+                        label_style=ft.TextStyle(size=11, color=T.TEXT_SECONDARY),
+                        width=82,
+                    )
+                    checkbox.on_change = (
+                        lambda e, k=key, a=action: on_action_change(e, k, a)
+                    )
+                    checks[action] = checkbox
+                    checkboxes.append(checkbox)
+                permission_checks[key] = checks
+
+                module_rows.append(
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Icon(
+                                    getattr(ft.Icons, module["icon"], ft.Icons.APPS),
+                                    size=18,
+                                    color=T.INDIGO_TEXT,
+                                ),
+                                ft.Column(
+                                    controls=[
+                                        ft.Text(
+                                            module["label"],
+                                            size=12,
+                                            weight=ft.FontWeight.W_600,
+                                            color=T.TEXT,
+                                        ),
+                                        ft.Text(
+                                            module["description"],
+                                            size=10,
+                                            color=T.TEXT_SUBTLE,
+                                            max_lines=1,
+                                            overflow=ft.TextOverflow.ELLIPSIS,
+                                        ),
+                                    ],
+                                    spacing=0,
+                                    expand=True,
+                                ),
+                                ft.Row(
+                                    controls=checkboxes,
+                                    spacing=2,
+                                    wrap=True,
+                                ),
+                            ],
+                            spacing=8,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            wrap=True,
+                        ),
+                        padding=ft.Padding.symmetric(horizontal=8, vertical=5),
+                        border_radius=8,
+                        bgcolor=T.SURFACE,
+                        border=_all_border(1, T.SURFACE_ALT),
+                    )
+                )
+
+            def protect_own_role():
+                """Evita que el usuario se quite a sí mismo el acceso a roles."""
+                if not is_own_role:
+                    return
+                checks = permission_checks.get("roles", {})
+                for action in ("can_read", "can_update"):
+                    checkbox = checks.get(action)
+                    if checkbox:
+                        checkbox.value = True
+                        checkbox.disabled = True
+
+            protect_own_role()
+
+            def apply_preset(preset_key: str):
+                permissions = preset_permissions(preset_key)
+                for key, checks in permission_checks.items():
+                    for action, checkbox in checks.items():
+                        checkbox.value = bool(
+                            permissions.get(key, {}).get(action, False)
+                        )
+                protect_own_role()
+                self.page.update()
+
+            def clear_permissions(e=None):
+                for checks in permission_checks.values():
+                    for checkbox in checks.values():
+                        checkbox.value = False
+                protect_own_role()
+                self.page.update()
+
+            preset_buttons = [
+                ft.OutlinedButton(
+                    PRESETS[key]["label"],
+                    tooltip=PRESETS[key]["description"],
+                    on_click=lambda e, k=key: apply_preset(k),
+                    style=ft.ButtonStyle(
+                        color=T.INDIGO_TEXT,
+                        padding=ft.Padding.symmetric(horizontal=8, vertical=2),
+                    ),
+                )
+                for key in PRESET_ORDER
+                if key in PRESETS
+            ]
+            preset_buttons.append(
+                ft.TextButton(
+                    "Limpiar",
+                    icon=ft.Icons.CLEAR_ALL_ROUNDED,
+                    on_click=clear_permissions,
+                    style=ft.ButtonStyle(color=T.TEXT_MUTED),
+                )
             )
 
             permissions_box = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Text("Permisos asignados al rol:", color=T.TEXT_SECONDARY, size=13, weight=ft.FontWeight.BOLD),
-                        can_read_check,
-                        can_write_check,
-                        can_update_check,
-                        can_delete_check,
+                        ft.Row(
+                            controls=[
+                                ft.Text(
+                                    "Acceso por módulo",
+                                    color=T.TEXT_SECONDARY,
+                                    size=13,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                ft.Text(
+                                    "Marca al menos un módulo",
+                                    color=T.TEXT_SUBTLE,
+                                    size=10,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        ft.Row(
+                            controls=preset_buttons,
+                            spacing=4,
+                            wrap=True,
+                        ),
+                        ft.Text(
+                            "No puedes quitarte a ti mismo el acceso a Roles "
+                            "y permisos.",
+                            color=T.AMBER,
+                            size=10,
+                            visible=is_own_role,
+                        ),
+                        ft.Column(
+                            controls=module_rows,
+                            spacing=4,
+                            scroll=ft.ScrollMode.AUTO,
+                            height=330 if mobile else 390,
+                        ),
                     ],
-                    spacing=4,
+                    spacing=8,
                 ),
-                padding=12,
+                padding=10,
                 border_radius=10,
-                bgcolor=T.SURFACE,
+                bgcolor=T.SURFACE_ALT,
                 border=_all_border(1, T.BORDER_STRONG),
             )
 
@@ -320,42 +531,48 @@ class RolesView:
                 error_msg.visible = False
                 name_val = name_input.value
                 desc_val = desc_input.value
-                cr = 1 if can_read_check.value else 0
-                cw = 1 if can_write_check.value else 0
-                cu = 1 if can_update_check.value else 0
-                cd = 1 if can_delete_check.value else 0
+                protect_own_role()
+                permissions = {
+                    key: {
+                        action: bool(checkbox.value)
+                        for action, checkbox in checks.items()
+                    }
+                    for key, checks in permission_checks.items()
+                }
 
                 if is_edit:
                     success, res = RoleController.update(
                         role_id=role_id,
                         name=name_val,
                         description=desc_val,
-                        can_read=cr,
-                        can_write=cw,
-                        can_update=cu,
-                        can_delete=cd,
+                        permissions=permissions,
                     )
                 else:
                     success, res = RoleController.create(
                         name=name_val,
                         description=desc_val,
-                        can_read=cr,
-                        can_write=cw,
-                        can_update=cu,
-                        can_delete=cd,
+                        permissions=permissions,
                     )
 
                 if success:
                     close_dialog(dialog)
                     load_roles()
-                    show_toast("Rol actualizado exitosamente" if is_edit else "Rol creado exitosamente")
+                    show_toast(
+                        "Rol actualizado exitosamente"
+                        if is_edit
+                        else "Rol creado exitosamente"
+                    )
                 else:
                     error_msg.value = str(res)
                     error_msg.visible = True
                     self.page.update()
 
             dialog = ft.AlertDialog(
-                title=ft.Text("Editar Rol y Permisos" if is_edit else "Nuevo Rol", color=T.TEXT, weight=ft.FontWeight.BOLD),
+                title=ft.Text(
+                    "Editar Rol y Permisos" if is_edit else "Nuevo Rol",
+                    color=T.TEXT,
+                    weight=ft.FontWeight.BOLD,
+                ),
                 content=ft.Container(
                     content=ft.Column(
                         controls=[
@@ -367,7 +584,7 @@ class RolesView:
                         spacing=12,
                         tight=True,
                     ),
-                    width=form_dialog_width(self.page, 420),
+                    width=wide_dialog_width(self.page, 860),
                 ),
                 actions=[
                     ft.TextButton(
@@ -389,7 +606,7 @@ class RolesView:
             )
             show_dialog(dialog)
 
-        # Dialog: Delete Confirmation
+        # ── Diálogo eliminar rol ───────────────────────────────────────────
         def confirm_delete_dialog(role):
             role_id = role["id"]
             role_name = role["name"]
@@ -406,13 +623,22 @@ class RolesView:
             dialog = ft.AlertDialog(
                 title=ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.WARNING_ROUNDED, color=T.AMBER, size=28),
-                        ft.Text("Confirmar eliminación", color=T.TEXT, weight=ft.FontWeight.BOLD),
+                        ft.Icon(
+                            ft.Icons.WARNING_ROUNDED,
+                            color=T.AMBER,
+                            size=28,
+                        ),
+                        ft.Text(
+                            "Confirmar eliminación",
+                            color=T.TEXT,
+                            weight=ft.FontWeight.BOLD,
+                        ),
                     ],
                     spacing=10,
                 ),
                 content=ft.Text(
-                    f"¿Estás seguro de que deseas eliminar el rol '{role_name}'?\nEsta acción no se puede deshacer.",
+                    f"¿Estás seguro de que deseas eliminar el rol '{role_name}'?\n"
+                    "Esta acción no se puede deshacer.",
                     color=T.TEXT_SECONDARY,
                     size=14,
                 ),
@@ -456,7 +682,7 @@ class RolesView:
         new_role_btn = ft.FilledButton(
             "Nuevo Rol",
             icon=ft.Icons.ADD_ROUNDED,
-            visible=AppState.has_permission("can_write"),
+            visible=AppState.has_permission("can_write", "roles"),
             style=ft.ButtonStyle(
                 bgcolor=T.INDIGO,
                 color=T.ON_ACCENT,
@@ -472,7 +698,11 @@ class RolesView:
                     content=ft.Row(
                         controls=[
                             ft.Container(
-                                content=ft.Icon(ft.Icons.ADMIN_PANEL_SETTINGS_ROUNDED, color=T.ON_ACCENT, size=28),
+                                content=ft.Icon(
+                                    ft.Icons.ADMIN_PANEL_SETTINGS_ROUNDED,
+                                    color=T.ON_ACCENT,
+                                    size=28,
+                                ),
                                 width=52,
                                 height=52,
                                 border_radius=14,
@@ -494,7 +724,9 @@ class RolesView:
                                         overflow=ft.TextOverflow.ELLIPSIS,
                                     ),
                                     ft.Text(
-                                        "Crea roles y asigna permisos de lectura, escritura, actualización y eliminación",
+                                        "Asigna acceso por módulo: un vendedor "
+                                        "puede usar POS y clientes; un bodeguero, "
+                                        "solo inventario.",
                                         color=T.TEXT_SUBTLE,
                                         size=13,
                                         max_lines=2,

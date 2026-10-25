@@ -32,7 +32,7 @@ class InventoryView:
         )
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "inventory"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -54,7 +54,7 @@ class InventoryView:
             )
             return MainLayout(page=self.page, content=content_layout, router=self.router)
 
-        can_write = AppState.has_permission("can_write")
+        can_write = AppState.has_permission("can_write", "inventory")
         stats_row = ft.ResponsiveRow(spacing=10, run_spacing=10)
 
         def stock_status(product):

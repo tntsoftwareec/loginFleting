@@ -20,7 +20,7 @@ class InvoicesView:
         self.search_query = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "invoices"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -38,6 +38,8 @@ class InvoicesView:
             )
             return MainLayout(page=self.page, content=content_layout, router=self.router)
 
+        can_write = AppState.has_permission("can_write", "invoices")
+        can_update = AppState.has_permission("can_update", "invoices")
         self.invoices_container = ft.Column(spacing=10, expand=True, scroll=ft.ScrollMode.AUTO)
         stats_row = ft.ResponsiveRow(spacing=10, run_spacing=10)
 
@@ -217,6 +219,9 @@ class InvoicesView:
             show_dialog(dlg)
 
         def send_sri_action(inv_id: int):
+            if not can_write:
+                show_toast("No tienes permisos para enviar facturas al SRI.", is_error=True)
+                return
             show_toast("Firmando y enviando la factura al SRI...")
 
             def work():
@@ -242,6 +247,9 @@ class InvoicesView:
             open_path(self.page, filepath)
 
         def resend_email_action(inv_id: int):
+            if not can_update:
+                show_toast("No tienes permisos para reenviar comprobantes.", is_error=True)
+                return
             show_toast("Re-enviando comprobantes por correo...")
             success, msg = InvoiceController.resend_email(inv_id)
             if success:
@@ -296,7 +304,7 @@ class InvoicesView:
                     ),
                 ),
             ]
-            if not ya_autorizada:
+            if not ya_autorizada and can_write:
                 dialog_actions.append(
                     ft.FilledButton(
                         "Enviar al SRI",
@@ -448,19 +456,28 @@ class InvoicesView:
                         ),
                         ft.IconButton(
                             icon=ft.Icons.CLOUD_UPLOAD_ROUNDED,
-                            icon_color=T.INFO,
-                            disabled=es_autorizada,
+                            icon_color=T.INFO if can_write else T.TEXT_SUBTLE,
+                            disabled=es_autorizada or not can_write,
                             tooltip=(
                                 "La factura ya está autorizada por el SRI"
                                 if es_autorizada
-                                else "Enviar al SRI (ambiente configurado en Mi Empresa)"
+                                else (
+                                    "Enviar al SRI (ambiente configurado en Mi Empresa)"
+                                    if can_write
+                                    else "Sin permiso para enviar al SRI"
+                                )
                             ),
                             on_click=lambda e, invoice=inv: send_sri_action(invoice["id"]),
                         ),
                         ft.IconButton(
                             icon=ft.Icons.SEND_ROUNDED,
-                            icon_color=T.SUCCESS,
-                            tooltip="Re-enviar por correo al cliente y SRI",
+                            icon_color=T.SUCCESS if can_update else T.TEXT_SUBTLE,
+                            disabled=not can_update,
+                            tooltip=(
+                                "Re-enviar por correo al cliente y SRI"
+                                if can_update
+                                else "Sin permiso para reenviar comprobantes"
+                            ),
                             on_click=lambda e, invoice=inv: resend_email_action(invoice["id"]),
                         ),
                     ],

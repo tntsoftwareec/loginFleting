@@ -10,9 +10,9 @@ from core.database import get_connection, init_db
 from core.migrations import applied_migrations
 
 EXPECTED_TABLES = {
-    "roles", "users", "clients", "suppliers", "products", "services",
-    "company", "invoices", "invoice_items", "quotations", "quotation_items",
-    "inventory_movements", "_fleting_migrations",
+    "roles", "users", "role_permissions", "clients", "suppliers", "products",
+    "services", "company", "invoices", "invoice_items", "quotations",
+    "quotation_items", "inventory_movements", "_fleting_migrations",
 }
 
 
@@ -37,11 +37,41 @@ class MigrationsTest(unittest.TestCase):
 
     def test_migrations_and_seeds_registered(self):
         applied = applied_migrations()
-        for name in ("001_initial", "006_company_secuencial",
-                     "001_roles_seed", "006_company_seed"):
+        for name in (
+            "001_initial",
+            "006_company_secuencial",
+            "014_role_permissions",
+            "001_roles_seed",
+            "006_company_seed",
+            "007_advanced_roles_seed",
+        ):
             self.assertIn(name, applied)
         # seeds/initial.py está obsoleto y no debe ejecutarse
         self.assertNotIn("initial", applied)
+
+    def test_role_permissions_seeded(self):
+        rows = self.conn.execute(
+            "SELECT COUNT(*) FROM role_permissions"
+        ).fetchone()[0]
+        self.assertGreater(rows, 0)
+
+        vendedor = self.conn.execute(
+            "SELECT id FROM roles WHERE lower(name) = 'vendedor'"
+        ).fetchone()
+        self.assertIsNotNone(vendedor)
+
+        allowed = self.conn.execute(
+            """
+            SELECT module FROM role_permissions
+            WHERE role_id = ? AND can_read = 1
+            ORDER BY module
+            """,
+            (vendedor[0],),
+        ).fetchall()
+        self.assertEqual(
+            [row[0] for row in allowed],
+            ["clients", "pos"],
+        )
 
     def test_company_secuencial_cotizacion_column(self):
         cols = {r[1] for r in self.conn.execute("PRAGMA table_info(company)").fetchall()}

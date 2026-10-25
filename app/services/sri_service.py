@@ -422,11 +422,27 @@ def _consultar_autorizacion(clave_acceso: str, endpoint: str) -> tuple[bool, dic
     }
 
 
-def _guardar_xml_autorizado(clave_acceso: str, comprobante_b64: str) -> str:
-    if not comprobante_b64:
+def _guardar_xml_autorizado(clave_acceso: str, comprobante: str) -> str:
+    """Guarda el XML autorizado que devuelve el SRI.
+
+    El campo ``comprobante`` puede venir como XML plano (comportamiento
+    observado en el ambiente de pruebas) o como base64. Se aceptan ambos
+    formatos, incluido base64 sin relleno ``=``.
+    """
+    if not comprobante:
         return ""
     try:
-        contenido = base64.b64decode(comprobante_b64)
+        if isinstance(comprobante, bytes):
+            contenido = comprobante
+        else:
+            texto = str(comprobante).strip().lstrip("\ufeff")
+            if texto.startswith("<"):
+                contenido = texto.encode("utf-8")
+            else:
+                compacto = "".join(texto.split())
+                compacto += "=" * (-len(compacto) % 4)
+                contenido = base64.b64decode(compacto)
+
         xml_dir = GENERATED_DIR / "invoices" / "xml"
         xml_dir.mkdir(parents=True, exist_ok=True)
         path = xml_dir / f"FAC_{clave_acceso}_autorizado.xml"

@@ -27,7 +27,7 @@ class POSView:
         self.search_catalog = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "pos"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -44,6 +44,8 @@ class POSView:
                 expand=True,
             )
             return MainLayout(page=self.page, content=content_layout, router=self.router)
+
+        can_write_clients = AppState.has_permission("can_write", "clients")
 
         def show_dialog(dlg):
             self.page.dialog = dlg
@@ -409,6 +411,10 @@ class POSView:
                 self.page.update()
 
         def open_quick_client_dialog():
+            if not can_write_clients:
+                show_toast("No tienes permisos para registrar clientes.", is_error=True)
+                return
+
             tf_ident = ft.TextField(label="Identificación / RUC", expand=True)
             tf_razon = ft.TextField(label="Razón Social / Nombre", expand=True)
             tf_email = ft.TextField(label="Correo Electrónico", expand=True)
@@ -442,7 +448,7 @@ class POSView:
             show_dialog(dlg)
 
         def emit_invoice(e):
-            can_write = AppState.has_permission("can_write")
+            can_write = AppState.has_permission("can_write", "pos")
             if not can_write:
                 show_toast("No tienes permisos de emisión de facturas.", is_error=True)
                 return
@@ -593,8 +599,13 @@ class POSView:
                         dd_client,
                         ft.IconButton(
                             icon=ft.Icons.PERSON_ADD_ROUNDED,
-                            icon_color=T.INFO,
-                            tooltip="Nuevo Cliente Rápido",
+                            icon_color=T.INFO if can_write_clients else T.TEXT_SUBTLE,
+                            tooltip=(
+                                "Nuevo Cliente Rápido"
+                                if can_write_clients
+                                else "Sin permiso para registrar clientes"
+                            ),
+                            disabled=not can_write_clients,
                             on_click=lambda e: open_quick_client_dialog(),
                         ),
                         ft.Text("Detalle de la Factura", size=13, weight=ft.FontWeight.BOLD, color=T.TEXT_MUTED),
@@ -666,8 +677,13 @@ class POSView:
                                 dd_client,
                                 ft.IconButton(
                                     icon=ft.Icons.PERSON_ADD_ROUNDED,
-                                    icon_color=T.INFO,
-                                    tooltip="Nuevo Cliente Rápido",
+                                    icon_color=T.INFO if can_write_clients else T.TEXT_SUBTLE,
+                                    tooltip=(
+                                        "Nuevo Cliente Rápido"
+                                        if can_write_clients
+                                        else "Sin permiso para registrar clientes"
+                                    ),
+                                    disabled=not can_write_clients,
                                     on_click=lambda e: open_quick_client_dialog(),
                                 ),
                             ],

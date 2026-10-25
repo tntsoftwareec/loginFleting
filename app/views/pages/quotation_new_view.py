@@ -33,7 +33,7 @@ class QuotationNewView:
         self.search_catalog = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "quotations"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -50,6 +50,8 @@ class QuotationNewView:
                 expand=True,
             )
             return MainLayout(page=self.page, content=content_layout, router=self.router)
+
+        can_write_clients = AppState.has_permission("can_write", "clients")
 
         def show_dialog(dlg):
             self.page.dialog = dlg
@@ -376,6 +378,10 @@ class QuotationNewView:
             txt_total.value = f"${sub15 + sub0 + iva_t + ice_t:.2f}"
 
         def open_quick_client_dialog():
+            if not can_write_clients:
+                show_toast("No tienes permisos para registrar clientes.", is_error=True)
+                return
+
             tf_ident = ft.TextField(label="Identificación / RUC", expand=True)
             tf_razon = ft.TextField(label="Razón Social / Nombre", expand=True)
             tf_email = ft.TextField(label="Correo Electrónico", expand=True)
@@ -409,7 +415,7 @@ class QuotationNewView:
             show_dialog(dlg)
 
         def emit_quotation(e):
-            can_write = AppState.has_permission("can_write")
+            can_write = AppState.has_permission("can_write", "quotations")
             if not can_write:
                 show_toast("No tienes permisos para crear cotizaciones.", is_error=True)
                 return
@@ -630,8 +636,13 @@ class QuotationNewView:
                             dd_client,
                             ft.IconButton(
                                 icon=ft.Icons.PERSON_ADD_ROUNDED,
-                                icon_color=T.INFO,
-                                tooltip="Nuevo Cliente Rápido",
+                                icon_color=T.INFO if can_write_clients else T.TEXT_SUBTLE,
+                                tooltip=(
+                                    "Nuevo Cliente Rápido"
+                                    if can_write_clients
+                                    else "Sin permiso para registrar clientes"
+                                ),
+                                disabled=not can_write_clients,
                                 on_click=lambda e: open_quick_client_dialog(),
                             ),
                         ],

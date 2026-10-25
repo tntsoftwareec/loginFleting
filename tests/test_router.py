@@ -44,6 +44,41 @@ class RouterAuthTest(unittest.TestCase):
         AppState.current_user = {"id": 1, "permissions": {"can_read": True}}
         self.assertEqual(self.router._resolve("/pos"), "/pos")
 
+    def test_module_guard_redirects_to_first_allowed_route(self):
+        AppState.current_user = {
+            "id": 1,
+            "permissions": {"can_read": True},
+            "module_permissions": {
+                "home": {"can_read": False},
+                "pos": {"can_read": True},
+                "clients": {"can_read": True},
+            },
+        }
+        self.assertEqual(self.router._resolve("/"), "/pos")
+        self.assertEqual(self.router._resolve("/inventory"), "/pos")
+        self.assertEqual(self.router._resolve("/clients"), "/clients")
+
+    def test_module_guard_allows_route_with_read_permission(self):
+        AppState.current_user = {
+            "id": 1,
+            "permissions": {"can_read": True},
+            "module_permissions": {
+                "inventory": {"can_read": True},
+            },
+        }
+        self.assertEqual(self.router._resolve("/inventory"), "/inventory")
+
+    def test_module_guard_skips_login_as_fallback(self):
+        AppState.current_user = {
+            "id": 1,
+            "permissions": {"can_read": True},
+            "module_permissions": {
+                "home": {"can_read": False},
+                "pos": {"can_read": False},
+            },
+        }
+        self.assertEqual(self.router._resolve("/"), "/login")
+
     def test_render_syncs_current_route(self):
         import inspect
         source = inspect.getsource(Router._render)

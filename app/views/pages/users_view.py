@@ -21,7 +21,7 @@ class UsersView:
         self.selected_status_filter = "ALL"
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "users"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -189,7 +189,7 @@ class UsersView:
                 )
 
                 user_action_btns = []
-                if AppState.has_permission("can_update"):
+                if AppState.has_permission("can_update", "users"):
                     user_action_btns.append(
                         ft.IconButton(
                             icon=ft.Icons.EDIT_OUTLINED,
@@ -198,7 +198,7 @@ class UsersView:
                             on_click=lambda e, u=user: open_user_dialog(u),
                         )
                     )
-                if AppState.has_permission("can_delete"):
+                if AppState.has_permission("can_delete", "users"):
                     user_action_btns.append(
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINE_ROUNDED,
@@ -558,7 +558,7 @@ class UsersView:
         new_user_btn = ft.FilledButton(
             "Nuevo Usuario",
             icon=ft.Icons.PERSON_ADD_ROUNDED,
-            visible=AppState.has_permission("can_write"),
+            visible=AppState.has_permission("can_write", "users"),
             style=ft.ButtonStyle(
                 bgcolor=T.INDIGO,
                 color=T.ON_ACCENT,

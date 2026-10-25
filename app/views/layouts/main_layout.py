@@ -34,12 +34,17 @@ class MainLayout(ft.Column):
         # BOTTOM BAR (visible en todos los dispositivos para navegación)
         self.controls.append(self._bottom_bar())
 
+    def _can_access(self, route_def) -> bool:
+        """True si el rol actual puede leer el módulo de la ruta."""
+        module = route_def.get("module")
+        return not module or AppState.can_access_module(module)
+
     # ---------- TOP BAR ----------
     def _top_bar(self):
         items = []
 
         for r in ROUTES:
-            if not r.get("show_in_top"):
+            if not r.get("show_in_top") or not self._can_access(r):
                 continue
 
             items.append(
@@ -119,14 +124,25 @@ class MainLayout(ft.Column):
         # Quick action buttons for topbar (solo desktop/tablet)
         quick_actions = []
         if AppState.device != "mobile":
+            quick_defs = [
+                (ft.Icons.POINT_OF_SALE_ROUNDED, "POS", T.ICON_NEON, "/pos"),
+                (ft.Icons.RECEIPT_LONG_ROUNDED, "Facturas", T.ICON_NEON_BLUE, "/invoices"),
+                (ft.Icons.DESCRIPTION_ROUNDED, "Cotizaciones", T.ICON_NEON_PURPLE, "/quotations"),
+                (ft.Icons.PEOPLE_ROUNDED, "Clientes", T.ICON_NEON_ALT, "/clients"),
+                (ft.Icons.INVENTORY_2_ROUNDED, "Productos", T.ICON_NEON_PINK, "/products"),
+                (ft.Icons.WAREHOUSE_ROUNDED, "Inventario", T.ICON_NEON_YELLOW, "/inventory"),
+                (ft.Icons.BUSINESS_ROUNDED, "Empresa", T.ICON_NEON_ORANGE, "/company"),
+            ]
+            route_by_path = {r["path"]: r for r in ROUTES}
             quick_actions = [
-                ft.IconButton(ft.Icons.POINT_OF_SALE_ROUNDED, tooltip="POS", icon_color=T.ICON_NEON, on_click=lambda e: self.router.navigate("/pos")),
-                ft.IconButton(ft.Icons.RECEIPT_LONG_ROUNDED, tooltip="Facturas", icon_color=T.ICON_NEON_BLUE, on_click=lambda e: self.router.navigate("/invoices")),
-                ft.IconButton(ft.Icons.DESCRIPTION_ROUNDED, tooltip="Cotizaciones", icon_color=T.ICON_NEON_PURPLE, on_click=lambda e: self.router.navigate("/quotations")),
-                ft.IconButton(ft.Icons.PEOPLE_ROUNDED, tooltip="Clientes", icon_color=T.ICON_NEON_ALT, on_click=lambda e: self.router.navigate("/clients")),
-                ft.IconButton(ft.Icons.INVENTORY_2_ROUNDED, tooltip="Productos", icon_color=T.ICON_NEON_PINK, on_click=lambda e: self.router.navigate("/products")),
-                ft.IconButton(ft.Icons.WAREHOUSE_ROUNDED, tooltip="Inventario", icon_color=T.ICON_NEON_YELLOW, on_click=lambda e: self.router.navigate("/inventory")),
-                ft.IconButton(ft.Icons.BUSINESS_ROUNDED, tooltip="Empresa", icon_color=T.ICON_NEON_ORANGE, on_click=lambda e: self.router.navigate("/company")),
+                ft.IconButton(
+                    icon,
+                    tooltip=tooltip,
+                    icon_color=color,
+                    on_click=lambda e, path=path: self.router.navigate(path),
+                )
+                for icon, tooltip, color, path in quick_defs
+                if self._can_access(route_by_path.get(path, {}))
             ]
 
         # En móvil, solo mostrar logout y menú
@@ -170,7 +186,7 @@ class MainLayout(ft.Column):
         paths = []
 
         for r in ROUTES:
-            if r.get("show_in_bottom"):
+            if r.get("show_in_bottom") and self._can_access(r):
                 destinations.append(
                     ft.NavigationBarDestination(
                         icon=ft.Icon(r["icon"], color=T.ICON_NEON),
@@ -179,6 +195,10 @@ class MainLayout(ft.Column):
                     )
                 )
                 paths.append(r["path"])
+
+        # Un rol puede no tener ninguna ruta en la barra inferior.
+        if not destinations:
+            return ft.Container(height=0)
 
         def on_change(e):
             self.router.navigate(paths[e.control.selected_index])

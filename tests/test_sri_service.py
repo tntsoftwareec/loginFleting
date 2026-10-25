@@ -1,3 +1,4 @@
+import base64
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,7 @@ from app.services import sri_service
 from app.services.sri_service import (
     _find_first,
     _formatear_respuesta,
+    _guardar_xml_autorizado,
     _parse_mensajes,
     _tiene_error_clave_registrada,
     send_invoice,
@@ -74,6 +76,31 @@ class SRIServiceParsingTest(unittest.TestCase):
         self.assertIn("RECEPCION", texto)
         self.assertIn("AUTORIZACION", texto)
         self.assertIn("1234567890", texto)
+
+
+class GuardarXmlAutorizadoTest(unittest.TestCase):
+    def test_guarda_xml_plano_devuelto_por_el_sri(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(sri_service, "GENERATED_DIR", Path(tmp)):
+                path = _guardar_xml_autorizado(
+                    CLAVE,
+                    "<?xml version='1.0' encoding='UTF-8'?><factura/>",
+                )
+                self.assertTrue(path)
+                self.assertEqual(
+                    Path(path).read_text(encoding="utf-8"),
+                    "<?xml version='1.0' encoding='UTF-8'?><factura/>",
+                )
+
+    def test_guarda_base64_sin_padding(self):
+        contenido = b"<factura><info/></factura>"
+        encoded = base64.b64encode(contenido).decode("ascii").rstrip("=")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(sri_service, "GENERATED_DIR", Path(tmp)):
+                path = _guardar_xml_autorizado(CLAVE, encoded)
+                self.assertTrue(path)
+                self.assertEqual(Path(path).read_bytes(), contenido)
 
 
 class ClaveRegistradaTest(unittest.TestCase):

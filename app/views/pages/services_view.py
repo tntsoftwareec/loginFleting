@@ -17,7 +17,7 @@ class ServicesView:
         self.search_query = ""
 
     def render(self):
-        if not AppState.has_permission("can_read"):
+        if not AppState.has_permission("can_read", "services"):
             content_layout = ft.Container(
                 content=ft.Column(
                     controls=[
@@ -76,7 +76,7 @@ class ServicesView:
 
         def queue_service(serv: dict, route: str):
             """Abre el POS o una nueva cotización con el servicio ya cargado."""
-            if not AppState.has_permission("can_write"):
+            if not AppState.has_permission("can_write", "services"):
                 show_toast("No tienes permisos para facturar o cotizar.", is_error=True)
                 return
             AppState.pending_cart_items = [{
@@ -140,9 +140,9 @@ class ServicesView:
                     border_radius=12,
                 )
 
-                can_write = AppState.has_permission("can_write")
-                can_update = AppState.has_permission("can_update")
-                can_delete = AppState.has_permission("can_delete")
+                can_write = AppState.has_permission("can_write", "services")
+                can_update = AppState.has_permission("can_update", "services")
+                can_delete = AppState.has_permission("can_delete", "services")
 
                 actions = ft.Row(
                     controls=[
@@ -486,7 +486,7 @@ class ServicesView:
             content_padding=ft.Padding.symmetric(horizontal=10, vertical=0),
         )
 
-        can_write = AppState.has_permission("can_write")
+        can_write = AppState.has_permission("can_write", "services")
         btn_add = ft.FilledButton(
             "Nuevo Servicio",
             icon=ft.Icons.ADD,
